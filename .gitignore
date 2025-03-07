@@ -1,0 +1,17 @@
+# Compiled Java files
+*.class
+
+# IDE-specific files (Eclipse)
+.project
+.classpath
+
+# IDE-specific files (IntelliJ IDEA)
+.idea/
+*.iml
+
+# Build output
+bin/
+build/
+
+# Operating system files (macOS)
+.DS_Store
