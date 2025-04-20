@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.event.*;
 import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -135,6 +136,7 @@ public class SalaryManagementPanel extends JPanel {
 
     // Update table data for the current page
     private void updateTable() {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
         tableModel.setRowCount(0);
         int start = (currentPage - 1) * rowsPerPage;
         int end = Math.min(start + rowsPerPage, filteredSalaries.size());
@@ -149,8 +151,8 @@ public class SalaryManagementPanel extends JPanel {
             BigDecimal base = salary.getBaseSalary() != null ? salary.getBaseSalary() : BigDecimal.ZERO;
             BigDecimal deductions = salary.getDeductions() != null ? salary.getDeductions() : BigDecimal.ZERO;
             String status = salary.getStatus() != null ? salary.getStatus() : nullString;
-            String createdAt = salary.getCreatedAt() != null ? salary.getCreatedAt().toString() : nullString;
-            String updatedAt = salary.getUpdatedAt() != null ? salary.getUpdatedAt().toString() : nullString;
+            String createdAt = salary.getCreatedAt() != null ? dateFormat.format(salary.getCreatedAt()) : nullString;
+            String updatedAt = salary.getUpdatedAt() != null ? dateFormat.format(salary.getUpdatedAt()) : nullString;
 
             tableModel.addRow(new Object[] {
                     i,
@@ -247,8 +249,12 @@ public class SalaryManagementPanel extends JPanel {
                 newSalary.setDeductions(deductions);
                 newSalary.setStatus(status);
                 newSalary.setEmployeeId(emUuid);
-
+                Employee employee = new Employee();
+                employee.setEmployeeName(emName);
+                newSalary.setEmployee(employee);
                 salaryDAO.insertSalary(newSalary);
+                allSalaries.add(0, newSalary);
+                filterData();
 
                 JOptionPane.showMessageDialog(dialog, "Thêm lương thành công!");
 
