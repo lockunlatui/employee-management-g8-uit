@@ -38,7 +38,6 @@ public class UserManagementPanel extends JPanel {
 	public UserManagementPanel() {
 		setLayout(new BorderLayout());
 
-		// Tạo panel tìm kiếm
 		JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 		searchField = new JTextField(20);
 		searchTypeComboBox = new JComboBox<>(new String[] {"Tên đăng nhập", "Vai trò", "Tên nhân viên"});
@@ -91,28 +90,22 @@ public class UserManagementPanel extends JPanel {
 			addUser();
 		});
 
-		// Thêm MouseListener cho bảng
 		userTable.addMouseListener(new java.awt.event.MouseAdapter() {
 			@Override
 			public void mouseClicked(java.awt.event.MouseEvent evt) {
 				int row = userTable.rowAtPoint(evt.getPoint());
 				int col = userTable.columnAtPoint(evt.getPoint());
 				
-				if (row >= 0 && col == 3) { // Cột Hành động
-					System.out.println("DEBUG: Click vào cột Hành động");
+				if (row >= 0 && col == 3) {
 					
-					// Lấy vị trí click trong cell
 					Rectangle cellRect = userTable.getCellRect(row, col, false);
 					int x = evt.getX() - cellRect.x;
 					int y = evt.getY() - cellRect.y;
 					
-					// Kiểm tra xem click vào nút nào
-					if (x < cellRect.width / 2) { // Click vào nút Sửa
-						System.out.println("DEBUG: Click vào nút Sửa");
+					if (x < cellRect.width / 2) {
 						UUID userId = ((ActionButtonPanel) userTable.getModel().getValueAt(row, col)).getUserId();
 						editUser(userId);
-					} else { // Click vào nút Xóa
-						System.out.println("DEBUG: Click vào nút Xóa");
+					} else {
 						UUID userId = ((ActionButtonPanel) userTable.getModel().getValueAt(row, col)).getUserId();
 						deleteUser(userId);
 					}
@@ -130,7 +123,6 @@ public class UserManagementPanel extends JPanel {
 			editButton = new JButton("Sửa");
 			deleteButton = new JButton("Xóa");
 			
-			// Thiết lập giao diện cho các nút
 			editButton.setBackground(new Color(51, 122, 255));
 			editButton.setForeground(Color.WHITE);
 			deleteButton.setBackground(new Color(217, 83, 79));
@@ -166,7 +158,6 @@ public class UserManagementPanel extends JPanel {
 			editButton = new JButton("Sửa");
 			deleteButton = new JButton("Xóa");
 
-			// Thiết lập giao diện cho các nút
 			editButton.setBackground(new Color(66, 139, 202));
 			editButton.setForeground(Color.WHITE);
 			editButton.setFocusPainted(false);
@@ -280,20 +271,17 @@ public class UserManagementPanel extends JPanel {
 		if (dialog.isConfirmed()) {
 			UserDTO userDTO = dialog.getUserDTO();
 			try {
-				// Tạo đối tượng User từ UserDTO
 				User newUser = new User();
 				newUser.setId(userDTO.getId());
 				newUser.setUsername(userDTO.getUsername());
-				newUser.setPassword(userDTO.getPassword()); // Lưu ý: Nên mã hóa mật khẩu
+				newUser.setPassword(userDTO.getPassword());
 				newUser.setRole(userDTO.getRole());
 				newUser.setEmployeeId(userDTO.getEmployeeId());
 				newUser.setCreatedAt(new java.sql.Date(System.currentTimeMillis()));
 				newUser.setUpdatedAt(new java.sql.Date(System.currentTimeMillis()));
 
-				// Gọi DAO để thêm vào database
 				userDAO.addUser(newUser);
 
-				// Load lại dữ liệu để cập nhật bảng
 				loadUserData();
 				JOptionPane.showMessageDialog(this, "Thêm người dùng thành công.", "Thành công", 
 						JOptionPane.INFORMATION_MESSAGE);
@@ -313,7 +301,7 @@ public class UserManagementPanel extends JPanel {
 		if (dialog.isConfirmed()) {
 			EditUserDTO userDTO = dialog.getUserDTO();
 			try {
-				// Tạo đối tượng User từ EditUserDTO
+				
 				User updatedUser = new User();
 				updatedUser.setId(userDTO.getId());
 				updatedUser.setUsername(userDTO.getUsername());
@@ -324,10 +312,8 @@ public class UserManagementPanel extends JPanel {
 				updatedUser.setEmployeeId(userDTO.getEmployeeId());
 				updatedUser.setUpdatedAt(new java.sql.Date(System.currentTimeMillis()));
 
-				// Gọi DAO để cập nhật trong database
 				userDAO.updateUser(updatedUser);
 
-				// Load lại dữ liệu để cập nhật bảng
 				loadUserData();
 				JOptionPane.showMessageDialog(this, "Cập nhật người dùng thành công.", "Thành công", 
 						JOptionPane.INFORMATION_MESSAGE);

@@ -24,7 +24,6 @@ public class DeleteUserDialog extends JDialog {
         userDTO.setId(userId);
 
         try {
-            // Lấy thông tin người dùng hiện tại
             User user = userDAO.getUserById(userId);
             if (user != null) {
                 userDTO.setUsername(user.getUsername());
@@ -44,7 +43,6 @@ public class DeleteUserDialog extends JDialog {
     }
 
     private void initializeComponents() {
-        // Thiết lập font chữ
         Font regularFont = new Font("SF Pro Text", Font.PLAIN, 13);
         Font mediumFont = new Font("SF Pro Text", Font.BOLD, 13);
         
@@ -54,7 +52,7 @@ public class DeleteUserDialog extends JDialog {
         
         okButton = new JButton("Xóa");
         okButton.setFont(mediumFont);
-        okButton.setBackground(new Color(255, 59, 48)); // Màu đỏ của Apple
+        okButton.setBackground(new Color(255, 59, 48));
         okButton.setForeground(Color.WHITE);
         okButton.setFocusPainted(false);
         okButton.setBorderPainted(false);
@@ -63,8 +61,8 @@ public class DeleteUserDialog extends JDialog {
         
         cancelButton = new JButton("Hủy");
         cancelButton.setFont(mediumFont);
-        cancelButton.setBackground(new Color(242, 242, 247)); // Màu xám nhạt của Apple
-        cancelButton.setForeground(new Color(0, 122, 255)); // Màu xanh của Apple
+        cancelButton.setBackground(new Color(242, 242, 247));
+        cancelButton.setForeground(new Color(0, 122, 255));
         cancelButton.setFocusPainted(false);
         cancelButton.setBorderPainted(false);
         cancelButton.setOpaque(true);
