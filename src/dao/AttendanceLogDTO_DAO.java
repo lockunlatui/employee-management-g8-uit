@@ -1,7 +1,7 @@
 package dao;
 
 import database.ConnectionManager;
-import model.AttendanceLogDTO;
+import dto.AttendanceLogDTO;
 
 import java.nio.ByteBuffer;
 import java.sql.*;

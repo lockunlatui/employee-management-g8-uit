@@ -8,9 +8,12 @@ import java.sql.SQLException;
 
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableCellEditor;
 
 import dao.EmployeeDAO;
 import dao.UserDAO;
+import dto.UserDTO;
+import dto.EditUserDTO;
 
 import java.util.UUID;
 import java.util.List;
@@ -28,9 +31,24 @@ public class UserManagementPanel extends JPanel {
 	private JPanel buttonPanel;
 	private UserDAO userDAO;
 	private EmployeeDAO employeeDAO;
+	private JTextField searchField;
+	private JComboBox<String> searchTypeComboBox;
+	private JButton searchButton;
 
 	public UserManagementPanel() {
 		setLayout(new BorderLayout());
+
+		JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		searchField = new JTextField(20);
+		searchTypeComboBox = new JComboBox<>(new String[] {"Tên đăng nhập", "Vai trò", "Tên nhân viên"});
+		searchButton = new JButton("Tìm kiếm");
+		
+		searchButton.addActionListener(e -> searchUsers());
+		
+		searchPanel.add(new JLabel("Tìm kiếm:"));
+		searchPanel.add(searchField);
+		searchPanel.add(searchTypeComboBox);
+		searchPanel.add(searchButton);
 
 		String[] columnNames = { "Tên đăng nhập", "Vai trò", "Nhân viên", "Hành động" };
 		tableModel = new DefaultTableModel(columnNames, 0) {
@@ -61,6 +79,7 @@ public class UserManagementPanel extends JPanel {
 		buttonPanel.add(addButton);
 
 		add(new JLabel("Quản lý Người dùng", SwingConstants.CENTER), BorderLayout.NORTH);
+		add(searchPanel, BorderLayout.NORTH);
 		add(scrollPane, BorderLayout.CENTER);
 		add(buttonPanel, BorderLayout.SOUTH);
 
@@ -70,167 +89,116 @@ public class UserManagementPanel extends JPanel {
 		addButton.addActionListener(e -> {
 			addUser();
 		});
+
+		userTable.addMouseListener(new java.awt.event.MouseAdapter() {
+			@Override
+			public void mouseClicked(java.awt.event.MouseEvent evt) {
+				int row = userTable.rowAtPoint(evt.getPoint());
+				int col = userTable.columnAtPoint(evt.getPoint());
+				
+				if (row >= 0 && col == 3) {
+					
+					Rectangle cellRect = userTable.getCellRect(row, col, false);
+					int x = evt.getX() - cellRect.x;
+					int y = evt.getY() - cellRect.y;
+					
+					if (x < cellRect.width / 2) {
+						UUID userId = ((ActionButtonPanel) userTable.getModel().getValueAt(row, col)).getUserId();
+						editUser(userId);
+					} else {
+						UUID userId = ((ActionButtonPanel) userTable.getModel().getValueAt(row, col)).getUserId();
+						deleteUser(userId);
+					}
+				}
+			}
+		});
 	}
 
 	private class ActionButtonRenderer extends JPanel implements TableCellRenderer {
-
 		private JButton editButton;
 		private JButton deleteButton;
 
 		public ActionButtonRenderer() {
-			setOpaque(true);
 			setLayout(new FlowLayout(FlowLayout.CENTER, 5, 0));
 			editButton = new JButton("Sửa");
-			editButton.setActionCommand("Sửa");
 			deleteButton = new JButton("Xóa");
-			deleteButton.setActionCommand("Xóa");
-			editButton.setFocusPainted(false);
-			editButton.setMargin(new Insets(2, 5, 2, 5)); // Increased vertical margin
-			deleteButton.setFocusPainted(false);
-			deleteButton.setMargin(new Insets(2, 5, 2, 5)); // Increased vertical margin
-			editButton.setFont(new Font("Arial", Font.PLAIN, 12));
-			deleteButton.setFont(new Font("Arial", Font.PLAIN, 12));
-			editButton.setBackground(new Color(51, 122, 255)); // Blue
+			
+			editButton.setBackground(new Color(51, 122, 255));
 			editButton.setForeground(Color.WHITE);
-			deleteButton.setBackground(new Color(217, 83, 79)); // Red
+			deleteButton.setBackground(new Color(217, 83, 79));
 			deleteButton.setForeground(Color.WHITE);
-			editButton.setBorderPainted(false);
-			deleteButton.setBorderPainted(false);
-
-			editButton.addMouseListener(new java.awt.event.MouseAdapter() {
-				public void mouseEntered(java.awt.event.MouseEvent evt) {
-					editButton.setBackground(new Color(40, 96, 175)); // Darker blue on hover
-				}
-
-				public void mouseExited(java.awt.event.MouseEvent evt) {
-					editButton.setBackground(new Color(51, 122, 255));
-				}
-			});
-			deleteButton.addMouseListener(new java.awt.event.MouseAdapter() {
-				public void mouseEntered(java.awt.event.MouseEvent evt) {
-					deleteButton.setBackground(new Color(192, 8, 74)); // Darker red on hover
-				}
-
-				public void mouseExited(java.awt.event.MouseEvent evt) {
-					deleteButton.setBackground(new Color(217, 83, 79));
-				}
-			});
-
+			
+			editButton.setFocusPainted(false);
+			deleteButton.setFocusPainted(false);
+			
 			add(editButton);
 			add(deleteButton);
 		}
 
 		@Override
-		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
-				int row, int column) {
-
+		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
 			if (isSelected) {
-				editButton.setForeground(table.getSelectionForeground());
-				editButton.setBackground(table.getSelectionBackground());
-				deleteButton.setForeground(table.getSelectionForeground());
-				deleteButton.setBackground(table.getSelectionBackground());
+				setBackground(table.getSelectionBackground());
 			} else {
-				editButton.setForeground(Color.WHITE);
-				editButton.setBackground(new Color(51, 122, 255));
-				deleteButton.setForeground(Color.WHITE);
-				deleteButton.setBackground(new Color(217, 83, 79));
+				setBackground(table.getBackground());
 			}
 			return this;
 		}
 	}
 
 	private class ActionButtonEditor extends DefaultCellEditor {
-
+		private JPanel panel;
 		private JButton editButton;
 		private JButton deleteButton;
-		private JPanel panel;
 		private UUID userId;
-		private boolean isPushed;
 
 		public ActionButtonEditor() {
-			super(new JCheckBox());
-			panel = new JPanel();
-			panel.setLayout(new FlowLayout(FlowLayout.CENTER, 5, 0));
+			super(new JTextField());
+			panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
 			editButton = new JButton("Sửa");
-			editButton.setActionCommand("Sửa");
 			deleteButton = new JButton("Xóa");
-			deleteButton.setActionCommand("Xóa");
+
+			editButton.setBackground(new Color(66, 139, 202));
+			editButton.setForeground(Color.WHITE);
 			editButton.setFocusPainted(false);
+
+			deleteButton.setBackground(new Color(217, 83, 79));
+			deleteButton.setForeground(Color.WHITE);
 			deleteButton.setFocusPainted(false);
+
 			panel.add(editButton);
 			panel.add(deleteButton);
 
-			ActionListener listener = new ActionListener() {
-				@Override
-				public void actionPerformed(ActionEvent e) {
-					if (isPushed) {
-						if (e.getActionCommand().equals("Sửa")) {
-//                            editUser(userId);
-						} else if (e.getActionCommand().equals("Xóa")) {
-//                            deleteUser(userId);
-						}
-					}
-					isPushed = false;
-					fireEditingStopped();
+			editButton.addActionListener(e -> {
+				if (userId != null) {
+					editUser(userId);
 				}
-			};
-			editButton.addActionListener(listener);
-			deleteButton.addActionListener(listener);
+			});
+
+			deleteButton.addActionListener(e -> {
+				if (userId != null) {
+					deleteUser(userId);
+				}
+			});
 		}
 
 		@Override
-		public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row,
-				int column) {
-			if (isSelected) {
-				panel.setForeground(table.getSelectionForeground());
-				panel.setBackground(table.getSelectionBackground());
-			} else {
-				panel.setForeground(table.getForeground());
-				panel.setBackground(UIManager.getColor("Button.background"));
-			}
-			if (value instanceof ActionButtonPanel) {
-				ActionButtonPanel buttonPanel = (ActionButtonPanel) value;
-				this.userId = buttonPanel.getUserId();
-			}
-			isPushed = true;
+		public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
+			userId = (UUID) table.getValueAt(row, 0);
 			return panel;
 		}
 
 		@Override
 		public Object getCellEditorValue() {
-			isPushed = false;
-			return "";
-		}
-
-		@Override
-		public boolean stopCellEditing() {
-			isPushed = false;
-			return super.stopCellEditing();
-		}
-
-		@Override
-		protected void fireEditingStopped() {
-			super.fireEditingStopped();
+			return userId;
 		}
 	}
 
 	private class ActionButtonPanel extends JPanel {
-
-		private JButton editButton;
-		private JButton deleteButton;
 		private UUID userId;
 
-		public ActionButtonPanel(UUID id) {
-			this.userId = id;
-			setLayout(new FlowLayout(FlowLayout.CENTER, 5, 0));
-			editButton = new JButton("Sửa");
-			editButton.setActionCommand("Sửa");
-			deleteButton = new JButton("Xóa");
-			deleteButton.setActionCommand("Xóa");
-			editButton.setFocusPainted(false);
-			deleteButton.setFocusPainted(false);
-			add(editButton);
-			add(deleteButton);
+		public ActionButtonPanel(UUID userId) {
+			this.userId = userId;
 		}
 
 		public UUID getUserId() {
@@ -256,98 +224,122 @@ public class UserManagementPanel extends JPanel {
 		}
 	}
 
-	
-	  private void addUser() {
-	        // Create a JPanel to hold the input fields
-	        JPanel panel = new JPanel();
-	        panel.setLayout(new GridLayout(0, 2, 10, 10)); // Grid layout with spacing
-	        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // Add padding
+	private void searchUsers() {
+		String searchText = searchField.getText().trim();
+		String searchType = (String) searchTypeComboBox.getSelectedItem();
+		
+		try {
+			List<User> users = userDAO.getAllUsers();
+			tableModel.setRowCount(0);
+			
+			for (User user : users) {
+				boolean match = false;
+				String employeeName = (user.getEmployee() != null) ? user.getEmployee().getEmployeeName() : "N/A";
+				
+				switch(searchType) {
+					case "Tên đăng nhập":
+						match = user.getUsername().toLowerCase().contains(searchText.toLowerCase());
+						break;
+					case "Vai trò":
+						match = user.getRole().toLowerCase().contains(searchText.toLowerCase());
+						break;
+					case "Tên nhân viên":
+						match = employeeName.toLowerCase().contains(searchText.toLowerCase());
+						break;
+				}
+				
+				if (match || searchText.isEmpty()) {
+					tableModel.addRow(new Object[] { 
+						user.getUsername(), 
+						user.getRole(), 
+						employeeName,
+						new ActionButtonPanel(user.getId()) 
+					});
+				}
+			}
+		} catch (SQLException e) {
+			JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm người dùng: " + e.getMessage(), "Lỗi",
+					JOptionPane.ERROR_MESSAGE);
+			e.printStackTrace();
+		}
+	}
 
-	        // Create labels and text fields
-	        JLabel usernameLabel = new JLabel("Tên đăng nhập:", SwingConstants.LEFT);
-	        JTextField usernameField = new JTextField(15);
-	        JLabel passwordLabel = new JLabel("Mật khẩu:", SwingConstants.LEFT);
-	        JPasswordField passwordField = new JPasswordField(15);
-	        JLabel roleLabel = new JLabel("Vai trò:", SwingConstants.LEFT);
-	        JTextField roleField = new JTextField(15);
-	        JLabel employeeIdLabel = new JLabel("Mã nhân viên:", SwingConstants.LEFT);
-	        
-	        // Create JComboBox for Employee ID
-	        JComboBox<String> employeeIdComboBox = new JComboBox<>();
-	        try {
-	            List<Employee> employees = employeeDAO.getAllEmployees(); // Get employees from DAO
-	            employeeIdComboBox.addItem("null"); // Add null option
-	            for (Employee employee : employees) {
-	                employeeIdComboBox.addItem(employee.getId().toString()); // Add employee IDs to combobox
-	            }
-	        } catch (SQLException e) {
-	            JOptionPane.showMessageDialog(this, "Lỗi khi tải danh sách nhân viên: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-	            e.printStackTrace();
-	        }
-	        
-	        
+	private void addUser() {
+		AddUserDialog dialog = new AddUserDialog((Frame) SwingUtilities.getWindowAncestor(this));
+		dialog.setVisible(true);
+		
+		if (dialog.isConfirmed()) {
+			UserDTO userDTO = dialog.getUserDTO();
+			try {
+				User newUser = new User();
+				newUser.setId(userDTO.getId());
+				newUser.setUsername(userDTO.getUsername());
+				newUser.setPassword(userDTO.getPassword());
+				newUser.setRole(userDTO.getRole());
+				newUser.setEmployeeId(userDTO.getEmployeeId());
+				newUser.setCreatedAt(new java.sql.Date(System.currentTimeMillis()));
+				newUser.setUpdatedAt(new java.sql.Date(System.currentTimeMillis()));
 
-	        // Add components to the panel
-	        panel.add(usernameLabel);
-	        panel.add(usernameField);
-	        panel.add(passwordLabel);
-	        panel.add(passwordField);
-	        panel.add(roleLabel);
-	        panel.add(roleField);
-	        panel.add(employeeIdLabel);
-	        panel.add(employeeIdComboBox);
+				userDAO.addUser(newUser);
 
-	        // Create the dialog
-	        int result = JOptionPane.showConfirmDialog(this, panel, "Thêm người dùng",
-	                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+				loadUserData();
+				JOptionPane.showMessageDialog(this, "Thêm người dùng thành công.", "Thành công", 
+						JOptionPane.INFORMATION_MESSAGE);
 
-	        if (result == JOptionPane.OK_OPTION) {
-	            String username = usernameField.getText();
-	            String password = new String(passwordField.getPassword()); 
-	            String role = roleField.getText();
-	            String employeeIdStr = (String) employeeIdComboBox.getSelectedItem();
+			} catch (SQLException ex) {
+				JOptionPane.showMessageDialog(this, "Lỗi khi thêm người dùng vào database: " + ex.getMessage(), 
+						"Lỗi", JOptionPane.ERROR_MESSAGE);
+				ex.printStackTrace();
+			}
+		}
+	}
 
-	            // Kiểm tra dữ liệu nhập vào (validate)
-	            if (username.trim().isEmpty() || password.trim().isEmpty() || role.trim().isEmpty()) {
-	                JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-	                return;
-	            }
+	private void editUser(UUID userId) {
+		EditUserDialog dialog = new EditUserDialog((Frame) SwingUtilities.getWindowAncestor(this), userId);
+		dialog.setVisible(true);
+		
+		if (dialog.isConfirmed()) {
+			EditUserDTO userDTO = dialog.getUserDTO();
+			try {
+				
+				User updatedUser = new User();
+				updatedUser.setId(userDTO.getId());
+				updatedUser.setUsername(userDTO.getUsername());
+				if (userDTO.getPassword() != null) {
+					updatedUser.setPassword(userDTO.getPassword()); // Lưu ý: Nên mã hóa mật khẩu
+				}
+				updatedUser.setRole(userDTO.getRole());
+				updatedUser.setEmployeeId(userDTO.getEmployeeId());
+				updatedUser.setUpdatedAt(new java.sql.Date(System.currentTimeMillis()));
 
-	            try {
-	                // Chuyển đổi employeeIdStr thành UUID (nếu có)
-	                UUID employeeId = null;
-	                if (!employeeIdStr.equals("null") && !employeeIdStr.trim().isEmpty()) {
-	                    employeeId = UUID.fromString(employeeIdStr);
-	                }
-	                // Mã hóa mật khẩu (nên dùng thư viện như BCrypt)
-	                // Lưu ý: KHÔNG BAO GIỜ lưu mật khẩu dưới dạng plain text
-	                String hashedPassword = password; //  THAY ĐỔI THÀNH HÀM MÃ HÓA MẬT KHẨU
+				userDAO.updateUser(updatedUser);
 
-	                // Tạo đối tượng User
-	                User newUser = new User();
-	                newUser.setId(UUID.randomUUID());
-	                newUser.setUsername(username);
-	                newUser.setPassword(hashedPassword);
-	                newUser.setRole(role);
-	                newUser.setEmployeeId(employeeId);
-	                newUser.setCreatedAt(new java.sql.Date(System.currentTimeMillis()));
-	                newUser.setUpdatedAt(new java.sql.Date(System.currentTimeMillis()));
+				loadUserData();
+				JOptionPane.showMessageDialog(this, "Cập nhật người dùng thành công.", "Thành công", 
+						JOptionPane.INFORMATION_MESSAGE);
 
-	                // Gọi DAO để thêm vào database
-	                UserDAO userDao = new UserDAO(); 
-	                userDao.addUser(newUser);
+			} catch (SQLException ex) {
+				JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật người dùng trong database: " + ex.getMessage(), 
+						"Lỗi", JOptionPane.ERROR_MESSAGE);
+				ex.printStackTrace();
+			}
+		}
+	}
 
-	                // Load lại dữ liệu để cập nhật bảng
-	                loadUserData();
-	                JOptionPane.showMessageDialog(this, "Thêm người dùng thành công.", "Thành công", JOptionPane.INFORMATION_MESSAGE);
+	private void deleteUser(UUID userId) {
+		DeleteUserDialog dialog = new DeleteUserDialog((Frame) SwingUtilities.getWindowAncestor(this), userId);
+		dialog.setVisible(true);
 
-	            } catch (IllegalArgumentException ex) {
-	                JOptionPane.showMessageDialog(this, "Mã nhân viên không hợp lệ.", "Lỗi", JOptionPane.ERROR_MESSAGE);
-	            } catch (SQLException ex) {
-	                JOptionPane.showMessageDialog(this, "Lỗi khi thêm người dùng vào database: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
-	                ex.printStackTrace();
-	            }
-	        }
-	    }
+		if (dialog.isConfirmed()) {
+			try {
+				userDAO.deleteUser(userId);
+				JOptionPane.showMessageDialog(this, "Xóa người dùng thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+				loadUserData();
+			} catch (SQLException e) {
+				JOptionPane.showMessageDialog(this, "Lỗi khi xóa người dùng: " + e.getMessage(),
+						"Lỗi", JOptionPane.ERROR_MESSAGE);
+			}
+		}
+	}
 
 }

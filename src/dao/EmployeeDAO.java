@@ -81,4 +81,35 @@ public class EmployeeDAO {
             }
         }
     }
+
+    public Employee getEmployeeByName(String employeeName) throws SQLException {
+        String sql = "SELECT id, department_id, employee_name, status, join_date, created_at, updated_at FROM Employees WHERE employee_name = ?";
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        try {
+            conn = ConnectionManager.getConnection();
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setString(1, employeeName);
+            rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                Employee employee = new Employee();
+                employee.setId(convertBytesToUUID(rs.getBytes("id")));
+                employee.setDepartmentId(convertBytesToUUID(rs.getBytes("department_id")));
+                employee.setEmployeeName(rs.getString("employee_name"));
+                employee.setStatus(rs.getString("status"));
+                employee.setJoinDate(rs.getDate("join_date"));
+                employee.setCreatedAt(rs.getDate("created_at"));
+                employee.setUpdatedAt(rs.getDate("updated_at"));
+                return employee;
+            }
+            return null;
+        } catch (SQLException e) {
+            System.err.println("Error in getEmployeeByName: " + e.getMessage());
+            throw e;
+        } finally {
+            closeResources(conn, pstmt, rs);
+        }
+    }
 }
