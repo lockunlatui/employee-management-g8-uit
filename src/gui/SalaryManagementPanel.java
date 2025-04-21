@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.table.*;
@@ -297,7 +298,16 @@ public class SalaryManagementPanel extends JPanel {
                 salaryDAO.updateSalary(salary);
 
                 // Update the salary in the list
-                int index = allSalaries.indexOf(salary);
+                UUID targetUuid = salary.getId(); // hoặc salary.uuid nếu bạn dùng public field
+                int index = -1;
+
+                for (int i = 0; i < allSalaries.size(); i++) {
+                    if (allSalaries.get(i).getId().equals(targetUuid)) {
+                        index = i;
+                        break;
+                    }
+                }
+
                 if (index != -1) {
                     allSalaries.set(index, salary);
                 }
