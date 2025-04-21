@@ -40,7 +40,7 @@ public class ConnectionManager {
             }
         }
     }
-    
+
     public static boolean isConnectionSuccessful() {
         try (Connection conn = getConnection()) {
             return conn != null && conn.isValid(1);
