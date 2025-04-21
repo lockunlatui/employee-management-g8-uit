@@ -6,7 +6,6 @@ import java.util.UUID;
 public class Department {
     private UUID id;
     private String name;
-    private String code;
     private Date createdAt;
     private Date updatedAt;
 
@@ -30,14 +29,6 @@ public class Department {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
     }
 
     public Date getCreatedAt() {
