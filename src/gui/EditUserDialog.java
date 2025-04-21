@@ -215,6 +215,10 @@ public class EditUserDialog extends JDialog {
         return confirmed;
     }
 
+    public boolean isUserUpdated() {
+        return confirmed;
+    }
+
     public EditUserDTO getUserDTO() {
         return userDTO;
     }
