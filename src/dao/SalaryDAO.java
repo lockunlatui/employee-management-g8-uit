@@ -12,6 +12,7 @@ import java.util.UUID;
 
 public class SalaryDAO {
 
+    // Method to get all salaries
     public List<Salary> getAllSalaries() throws SQLException {
         List<Salary> salaries = new ArrayList<>();
 
@@ -57,6 +58,50 @@ public class SalaryDAO {
         return salaries;
     }
 
+    // Method to get a single salary by ID-=44444444400000000000kjjjj22222222222k,
+    public Salary getOne(UUID salaryId) throws SQLException {
+        Salary salary = null;
+        String sql = "SELECT s.id AS salary_id, s.employee_id, s.base_salary, s.deductions, s.status, s.created_at, s.updated_at, "
+                + "e.employee_name "
+                + "FROM Salaries s "
+                + "INNER JOIN Employees e ON s.employee_id = e.id "
+                + "WHERE s.id = ?";
+
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = ConnectionManager.getConnection();
+            pstmt = conn.prepareStatement(sql);
+            pstmt.setBytes(1, convertUUIDToBytes(salaryId)); // Set UUID parameter
+            rs = pstmt.executeQuery();
+
+            if (rs.next()) {
+                salary = new Salary();
+                salary.setId(convertBytesToUUID(rs.getBytes("salary_id")));
+                salary.setEmployeeId(convertBytesToUUID(rs.getBytes("employee_id")));
+                salary.setBaseSalary(rs.getBigDecimal("base_salary"));
+                salary.setDeductions(rs.getBigDecimal("deductions"));
+                salary.setStatus(rs.getString("status"));
+                salary.setCreatedAt(rs.getDate("created_at"));
+                salary.setUpdatedAt(rs.getDate("updated_at"));
+
+                Employee employee = new Employee();
+                employee.setEmployeeName(rs.getString("employee_name"));
+                salary.setEmployee(employee);
+            }
+        } catch (SQLException e) {
+            System.err.println("Error in getOne: " + e.getMessage());
+            throw e;
+        } finally {
+            closeResources(conn, pstmt, rs);
+        }
+
+        return salary;
+    }
+
+    // Method to insert a new salary
     public void insertSalary(Salary salary) throws SQLException {
         String sql = "INSERT INTO Salaries (id, employee_id, base_salary, deductions, status, created_at, updated_at) "
                 +
@@ -86,6 +131,7 @@ public class SalaryDAO {
         }
     }
 
+    // Method to delete a salary by ID
     public void deleteSalary(UUID salaryId) throws SQLException {
         String sql = "DELETE FROM Salaries WHERE id = ?";
 
@@ -105,6 +151,7 @@ public class SalaryDAO {
         }
     }
 
+    // Method to update an existing salary
     public void updateSalary(Salary salary) throws SQLException {
         String sql = "UPDATE Salaries SET base_salary = ?, deductions = ?, status = ?, updated_at = ? WHERE id = ?";
 

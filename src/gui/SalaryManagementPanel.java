@@ -335,9 +335,16 @@ public class SalaryManagementPanel extends JPanel {
             // Edit action (to be implemented)
             editButton.addActionListener(e -> {
                 fireEditingStopped();
-                Salary salary = filteredSalaries.get(rowIndex);
-
-                openEditSalaryDialog(salary);
+                UUID salaryUuid = filteredSalaries.get(rowIndex).getId();
+                SalaryDAO salaryDAO = new SalaryDAO();
+                Salary salary = null;
+                try {
+                    salary = salaryDAO.getOne(salaryUuid);
+                    openEditSalaryDialog(salary);
+                } catch (SQLException ex) {
+                    JOptionPane.showMessageDialog(SalaryManagementPanel.this,
+                            "Lỗi khi lấy thông tin lương: " + ex.getMessage());
+                }
             });
 
             // Delete action
