@@ -14,8 +14,13 @@ bin/
 build/
 
 # Operating system files (macOS)
-.
+.DS_Store
 
 #VS Code
-
 .vscode/*
+
+# Database files
+mysql-data/
+*.log
+*.pid
+*.sock
