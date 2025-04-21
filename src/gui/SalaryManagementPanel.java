@@ -39,9 +39,8 @@ public class SalaryManagementPanel extends JPanel {
         title.setFont(new Font("Arial", Font.BOLD, 20));
         add(title, BorderLayout.NORTH);
 
-        // Search and control panel
+        // Search & control panel
         JPanel controlPanel = new JPanel(new BorderLayout(10, 10));
-
         JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         searchPanel.add(new JLabel("Tìm kiếm theo tên nhân viên:"));
         searchField = new JTextField(20);
@@ -50,29 +49,32 @@ public class SalaryManagementPanel extends JPanel {
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton addButton = new JButton("Thêm");
-
         recordCountLabel = new JLabel("Tổng cộng: 0");
         buttonPanel.add(recordCountLabel);
         buttonPanel.add(addButton);
         controlPanel.add(buttonPanel, BorderLayout.EAST);
         add(controlPanel, BorderLayout.BEFORE_FIRST_LINE);
 
-        // Table setup
+        // Table columns
         String[] columnNames = { "STT", "Mã nhân viên", "Tên nhân viên", "Lương cơ bản", "Khấu trừ",
                 "Trạng thái", "Ngày tạo", "Ngày cập nhập", "Hành động" };
 
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 0 || column == 7;
+                return column == 8;
             }
         };
+
         salaryTable = new JTable(tableModel);
         salaryTable.setRowHeight(30);
+        salaryTable.getColumn("Hành động").setCellEditor(new ActionCellEditor());
+        salaryTable.getColumn("Hành động").setCellRenderer(new ActionCellRenderer());
+
         JScrollPane scrollPane = new JScrollPane(salaryTable);
         add(scrollPane, BorderLayout.CENTER);
 
-        // Panel Pagination
+        // Pagination panel
         JPanel paginationPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
         prevButton = new JButton("Trước");
         nextButton = new JButton("Tiếp");
@@ -80,12 +82,10 @@ public class SalaryManagementPanel extends JPanel {
         paginationPanel.add(nextButton);
         add(paginationPanel, BorderLayout.SOUTH);
 
-        // Event listeners
+        // Add button logic
         addButton.addActionListener(e -> openAddSalaryDialog());
-        // selectButton.addActionListener(e -> {
-        // isSelecting = !isSelecting;
-        // toggleCheckboxColumn(isSelecting);
-        // });
+
+        // Search field listener
         searchField.addKeyListener(new KeyAdapter() {
             @Override
             public void keyReleased(KeyEvent e) {
@@ -93,12 +93,15 @@ public class SalaryManagementPanel extends JPanel {
                 filterData();
             }
         });
+
+        // Pagination buttons
         prevButton.addActionListener(e -> {
             if (currentPage > 1) {
                 currentPage--;
                 updateTable();
             }
         });
+
         nextButton.addActionListener(e -> {
             int totalPages = (int) Math.ceil(filteredSalaries.size() / (double) rowsPerPage);
             if (currentPage < totalPages) {
@@ -107,11 +110,10 @@ public class SalaryManagementPanel extends JPanel {
             }
         });
 
-        // Load data on initialization
         loadSalaryData();
     }
 
-    // Load salary data from database
+    // Load all salary data from database
     private void loadSalaryData() {
         SalaryDAO dao = new SalaryDAO();
         try {
@@ -122,7 +124,7 @@ public class SalaryManagementPanel extends JPanel {
         }
     }
 
-    // Filter data based on search input
+    // Filter salaries by employee name
     private void filterData() {
         String keyword = searchField.getText().trim().toLowerCase();
         filteredSalaries.clear();
@@ -134,7 +136,7 @@ public class SalaryManagementPanel extends JPanel {
         updateTable();
     }
 
-    // Update table data for the current page
+    // Update table content based on filtered results and current page
     private void updateTable() {
         SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
         tableModel.setRowCount(0);
@@ -155,7 +157,7 @@ public class SalaryManagementPanel extends JPanel {
             String updatedAt = salary.getUpdatedAt() != null ? dateFormat.format(salary.getUpdatedAt()) : nullString;
 
             tableModel.addRow(new Object[] {
-                    i,
+                    i + 1,
                     employeeId,
                     employeeName,
                     base,
@@ -163,42 +165,21 @@ public class SalaryManagementPanel extends JPanel {
                     status,
                     createdAt,
                     updatedAt,
-                    "Hành động"
+                    ""
             });
         }
 
-        // Set column widths
-        salaryTable.getColumnModel().getColumn(0).setPreferredWidth(30); // index column
-        salaryTable.getColumnModel().getColumn(1).setPreferredWidth(200); // Employee ID column
-        salaryTable.getColumnModel().getColumn(2).setPreferredWidth(150); // Employee Name column
-        salaryTable.getColumnModel().getColumn(3).setPreferredWidth(100); // Base Salary column
-        salaryTable.getColumnModel().getColumn(4).setPreferredWidth(100); // Deductions column
-        salaryTable.getColumnModel().getColumn(5).setPreferredWidth(100); // Status column
-        salaryTable.getColumnModel().getColumn(6).setPreferredWidth(150); // Created At column
-        salaryTable.getColumnModel().getColumn(7).setPreferredWidth(150); // Updated At column
-        salaryTable.getColumnModel().getColumn(8).setPreferredWidth(100); // Action column
-        // Update record count
         recordCountLabel.setText("Tổng cộng: " + filteredSalaries.size());
     }
 
-    // private void toggleCheckboxColumn(boolean show) {
-    // TableColumn col = salaryTable.getColumnModel().getColumn(0);
-    // col.setMinWidth(show ? 30 : 0);
-    // col.setMaxWidth(show ? 30 : 0);
-    // col.setWidth(show ? 30 : 0);
-    // }
-
-    // Dialog to add a new salary
+    // Dialog for adding a new salary entry
     private void openAddSalaryDialog() {
         SalaryDAO salaryDAO = new SalaryDAO();
         EmployeeDAO employeeDAO = new EmployeeDAO();
 
         JDialog dialog = new JDialog((Frame) null, "Thêm lương", true);
-
-        JPanel panel = new JPanel();
-        panel.setLayout(new GridLayout(6, 2, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(6, 2, 10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
         dialog.add(panel);
 
         panel.add(new JLabel("Chọn nhân viên:"));
@@ -223,7 +204,6 @@ public class SalaryManagementPanel extends JPanel {
         panel.add(add);
         panel.add(cancel);
 
-        // Load employee data into combo box
         try {
             List<Employee> employees = employeeDAO.getAllEmployees();
             for (Employee employee : employees) {
@@ -232,7 +212,7 @@ public class SalaryManagementPanel extends JPanel {
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(dialog, "Lỗi khi lấy danh sách nhân viên: " + e.getMessage());
         }
-        // Add button event
+
         add.addActionListener(e -> {
             try {
                 BigDecimal base = new BigDecimal(baseField.getText());
@@ -257,7 +237,6 @@ public class SalaryManagementPanel extends JPanel {
                 filterData();
 
                 JOptionPane.showMessageDialog(dialog, "Thêm lương thành công!");
-
                 dialog.dispose();
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(dialog, "Dữ liệu không hợp lệ");
@@ -266,17 +245,84 @@ public class SalaryManagementPanel extends JPanel {
 
         cancel.addActionListener(e -> dialog.dispose());
 
-        dialog.setSize(400, 300);
+        dialog.setSize(700, 300);
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
 
-    // Renderer for the action cell (e.g., delete button)
+    // Dialog for editing an existing salary entry
+    private void openEditSalaryDialog(Salary salary) {
+        SalaryDAO salaryDAO = new SalaryDAO();
+
+        JDialog dialog = new JDialog((Frame) null, "Sửa thông tin lương", true);
+        JPanel panel = new JPanel(new GridLayout(6, 2, 10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        dialog.add(panel);
+
+        panel.add(new JLabel("Mã nhân viên:"));
+        JTextField employField = new JTextField(
+                salary.getDeductions() != null ? salary.getEmployeeId().toString() : "");
+        employField.setEditable(false);
+        panel.add(employField);
+
+        panel.add(new JLabel("Lương cơ bản:"));
+        JTextField baseField = new JTextField(salary.getBaseSalary() != null ? salary.getBaseSalary().toString() : "");
+        panel.add(baseField);
+
+        panel.add(new JLabel("Khấu trừ:"));
+        JTextField deductionField = new JTextField(
+                salary.getDeductions() != null ? salary.getDeductions().toString() : "");
+        panel.add(deductionField);
+
+        panel.add(new JLabel("Trạng thái:"));
+        JComboBox<String> statusBox = new JComboBox<>(
+                new String[] { "Đã thanh toán", "Chưa thanh toán", "Đang xử lý" });
+        statusBox.setSelectedItem(salary.getStatus());
+        panel.add(statusBox);
+
+        JButton saveButton = new JButton("Lưu");
+        JButton cancelButton = new JButton("Hủy");
+        panel.add(saveButton);
+        panel.add(cancelButton);
+
+        saveButton.addActionListener(e -> {
+            try {
+                BigDecimal base = new BigDecimal(baseField.getText().trim());
+                BigDecimal deductions = new BigDecimal(deductionField.getText().trim());
+                String status = (String) statusBox.getSelectedItem();
+                salary.setBaseSalary(base);
+                salary.setDeductions(deductions);
+                salary.setStatus(status);
+                salary.setUpdatedAt(new java.util.Date());
+                salaryDAO.updateSalary(salary);
+
+                // Update the salary in the list
+                int index = allSalaries.indexOf(salary);
+                if (index != -1) {
+                    allSalaries.set(index, salary);
+                }
+                // Refresh the table
+                filterData();
+                JOptionPane.showMessageDialog(dialog, "Cập nhật lương thành công!");
+                dialog.dispose();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(dialog, "Dữ liệu không hợp lệ hoặc lỗi xảy ra.");
+            }
+        });
+
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        dialog.setSize(700, 300);
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    // ===== Custom Cell Editor for "Hành động" Column =====
     class ActionCellEditor extends AbstractCellEditor implements TableCellEditor {
         private JPanel panel;
         private JButton editButton;
         private JButton deleteButton;
-        private Salary currentSalary;
+        private int rowIndex;
 
         public ActionCellEditor() {
             panel = new JPanel(new FlowLayout(FlowLayout.CENTER));
@@ -286,21 +332,27 @@ public class SalaryManagementPanel extends JPanel {
             panel.add(editButton);
             panel.add(deleteButton);
 
+            // Edit action (to be implemented)
             editButton.addActionListener(e -> {
-                // openEditSalaryDialog(currentSalary);
+                fireEditingStopped();
+                Salary salary = filteredSalaries.get(rowIndex);
+
+                openEditSalaryDialog(salary);
             });
 
+            // Delete action
             deleteButton.addActionListener(e -> {
-                int confirm = JOptionPane.showConfirmDialog(
-                        SalaryManagementPanel.this,
-                        "Bạn có chắc chắn muốn xóa lương này?",
-                        "Xác nhận xóa",
-                        JOptionPane.YES_NO_OPTION);
+                fireEditingStopped();
+                Salary salary = filteredSalaries.get(rowIndex);
+                int confirm = JOptionPane.showConfirmDialog(SalaryManagementPanel.this,
+                        "Bạn có chắc chắn muốn xóa lương này?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     try {
                         SalaryDAO dao = new SalaryDAO();
-                        dao.deleteSalary(currentSalary.getId());
-                        loadSalaryData();
+                        dao.deleteSalary(salary.getId());
+                        allSalaries.remove(salary);
+                        filterData();
+                        JOptionPane.showMessageDialog(SalaryManagementPanel.this, "Xóa thành công!");
                     } catch (SQLException ex) {
                         JOptionPane.showMessageDialog(SalaryManagementPanel.this, "Lỗi khi xóa: " + ex.getMessage());
                     }
@@ -311,8 +363,7 @@ public class SalaryManagementPanel extends JPanel {
         @Override
         public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row,
                 int column) {
-            int modelRow = salaryTable.convertRowIndexToModel(row);
-            currentSalary = filteredSalaries.get((currentPage - 1) * rowsPerPage + modelRow);
+            rowIndex = (currentPage - 1) * rowsPerPage + row;
             return panel;
         }
 
@@ -322,4 +373,18 @@ public class SalaryManagementPanel extends JPanel {
         }
     }
 
+    // ===== Renderer for "Hành động" Column =====
+    class ActionCellRenderer extends JPanel implements TableCellRenderer {
+        public ActionCellRenderer() {
+            setLayout(new FlowLayout(FlowLayout.CENTER));
+            add(new JButton("Sửa"));
+            add(new JButton("Xóa"));
+        }
+
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
+                int row, int column) {
+            return this;
+        }
+    }
 }

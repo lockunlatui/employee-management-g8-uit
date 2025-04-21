@@ -105,6 +105,31 @@ public class SalaryDAO {
         }
     }
 
+    public void updateSalary(Salary salary) throws SQLException {
+        String sql = "UPDATE Salaries SET base_salary = ?, deductions = ?, status = ?, updated_at = ? WHERE id = ?";
+
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+
+        try {
+            conn = ConnectionManager.getConnection();
+            pstmt = conn.prepareStatement(sql);
+
+            pstmt.setBigDecimal(1, salary.getBaseSalary());
+            pstmt.setBigDecimal(2, salary.getDeductions());
+            pstmt.setString(3, salary.getStatus());
+            pstmt.setTimestamp(4, new Timestamp(salary.getUpdatedAt().getTime()));
+            pstmt.setBytes(5, convertUUIDToBytes(salary.getId()));
+
+            pstmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Error in updateSalary: " + e.getMessage());
+            throw e;
+        } finally {
+            closeResources(conn, pstmt, null); // Đảm bảo đóng tài nguyên
+        }
+    }
+
     private UUID convertBytesToUUID(byte[] bytes) throws SQLException {
         if (bytes == null)
             return null;
