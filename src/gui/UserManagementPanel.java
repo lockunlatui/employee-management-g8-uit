@@ -1,25 +1,22 @@
 package gui;
 
 import javax.swing.*;
+import javax.swing.border.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.event.*;
 import java.sql.SQLException;
+import java.util.UUID;
 
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableCellRenderer;
-import javax.swing.table.TableCellEditor;
+import javax.swing.table.*;
 
-import dao.EmployeeDAO;
-import dao.UserDAO;
+import service.UserService;
+import service.UserServiceImpl;
 import dto.UserDTO;
 import dto.EditUserDTO;
 
-import java.util.UUID;
-import java.util.List;
-
-import model.Employee;
 import model.User;
+
+import java.util.List;
 
 @SuppressWarnings("serial")
 public class UserManagementPanel extends JPanel {
@@ -29,120 +26,256 @@ public class UserManagementPanel extends JPanel {
 	private JScrollPane scrollPane;
 	private JButton addButton;
 	private JPanel buttonPanel;
-	private UserDAO userDAO;
-	private EmployeeDAO employeeDAO;
+	private UserService userService;
 	private JTextField searchField;
 	private JComboBox<String> searchTypeComboBox;
 	private JButton searchButton;
+	private JButton refreshButton;
+	
+	// Màu sắc
+	private Color primaryColor = new Color(41, 128, 185);
+	private Color secondaryColor = new Color(52, 152, 219);
+	private Color accentColor = new Color(230, 126, 34);
+	private Color lightBgColor = new Color(248, 249, 250);
+	private Color darkTextColor = new Color(44, 62, 80);
+	private Color lightTextColor = new Color(236, 240, 241);
+	private Color borderColor = new Color(223, 230, 233);
 
 	public UserManagementPanel() {
-		setLayout(new BorderLayout());
-
-		JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+		setLayout(new BorderLayout(0, 0));
+		setBackground(lightBgColor);
+		
+		// ===== Header Panel =====
+		JPanel headerPanel = createHeaderPanel();
+		add(headerPanel, BorderLayout.NORTH);
+		
+		// ===== Content Panel =====
+		JPanel contentPanel = new JPanel(new BorderLayout(15, 15));
+		contentPanel.setBackground(lightBgColor);
+		contentPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+		
+		// Bảng người dùng
+		createUserTable();
+		contentPanel.add(scrollPane, BorderLayout.CENTER);
+		
+		// ===== Footer Panel =====
+		JPanel footerPanel = createFooterPanel();
+		contentPanel.add(footerPanel, BorderLayout.SOUTH);
+		
+		add(contentPanel, BorderLayout.CENTER);
+		
+		// Tải dữ liệu người dùng
+		userService = new UserServiceImpl();
+		loadUserData();
+		
+		// Thêm sự kiện
+		setupEventHandlers();
+	}
+	
+	private JPanel createHeaderPanel() {
+		JPanel headerPanel = new JPanel(new BorderLayout());
+		headerPanel.setBackground(Color.WHITE);
+		headerPanel.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createMatteBorder(0, 0, 1, 0, borderColor),
+			BorderFactory.createEmptyBorder(20, 20, 20, 20)
+		));
+		
+		// Tiêu đề
+		JLabel titleLabel = new JLabel("Quản lý người dùng");
+		titleLabel.setFont(new Font("Segoe UI", Font.BOLD, 24));
+		titleLabel.setForeground(darkTextColor);
+		
+		// Panel tìm kiếm
+		JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+		searchPanel.setOpaque(false);
+		
 		searchField = new JTextField(20);
+		searchField.setPreferredSize(new Dimension(200, 32));
+		searchField.setBorder(BorderFactory.createCompoundBorder(
+			BorderFactory.createLineBorder(borderColor),
+			BorderFactory.createEmptyBorder(5, 10, 5, 10)
+		));
+		
 		searchTypeComboBox = new JComboBox<>(new String[] {"Tên đăng nhập", "Vai trò", "Tên nhân viên"});
+		searchTypeComboBox.setPreferredSize(new Dimension(150, 32));
+		
 		searchButton = new JButton("Tìm kiếm");
+		searchButton.setPreferredSize(new Dimension(100, 32));
+		searchButton.setBackground(secondaryColor);
+		searchButton.setForeground(Color.WHITE);
+		searchButton.setFocusPainted(false);
+		searchButton.setBorderPainted(false);
 		
-		searchButton.addActionListener(e -> searchUsers());
+		refreshButton = new JButton("Làm mới");
+		refreshButton.setPreferredSize(new Dimension(90, 32));
+		refreshButton.setBackground(Color.WHITE);
+		refreshButton.setForeground(secondaryColor);
+		refreshButton.setBorder(BorderFactory.createLineBorder(secondaryColor));
+		refreshButton.setFocusPainted(false);
 		
-		searchPanel.add(new JLabel("Tìm kiếm:"));
+		searchPanel.add(new JLabel("Tìm kiếm: "));
 		searchPanel.add(searchField);
 		searchPanel.add(searchTypeComboBox);
 		searchPanel.add(searchButton);
-
-		String[] columnNames = { "Tên đăng nhập", "Vai trò", "Nhân viên", "Hành động" };
+		searchPanel.add(Box.createHorizontalStrut(10));
+		searchPanel.add(refreshButton);
+		
+		headerPanel.add(titleLabel, BorderLayout.WEST);
+		headerPanel.add(searchPanel, BorderLayout.EAST);
+		
+		return headerPanel;
+	}
+	
+	private void createUserTable() {
+		String[] columnNames = { "Tên đăng nhập", "Vai trò", "Nhân viên", "Hành động" };
 		tableModel = new DefaultTableModel(columnNames, 0) {
 			@Override
 			public boolean isCellEditable(int row, int column) {
-				return false;
+				return column == 3; // Chỉ cho phép edit cột hành động
+			}
+			
+			@Override
+			public Class<?> getColumnClass(int column) {
+				if (column == 3) {
+					return ActionButtonPanel.class;
+				}
+				return Object.class;
 			}
 		};
+		
 		userTable = new JTable(tableModel);
-		userTable.setRowHeight(30);
+		userTable.setRowHeight(45);
+		userTable.setShowGrid(false);
+		userTable.setIntercellSpacing(new Dimension(0, 0));
+		userTable.setBackground(Color.WHITE);
+		userTable.setSelectionBackground(new Color(232, 242, 254));
+		userTable.setSelectionForeground(darkTextColor);
+		userTable.getTableHeader().setBackground(Color.WHITE);
+		userTable.getTableHeader().setPreferredSize(new Dimension(0, 40));
+		userTable.getTableHeader().setFont(new Font("Segoe UI", Font.BOLD, 13));
+		userTable.getTableHeader().setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, borderColor));
+		userTable.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+		
+		// Thiết lập độ rộng các cột
+		userTable.getColumnModel().getColumn(0).setPreferredWidth(250);
+		userTable.getColumnModel().getColumn(1).setPreferredWidth(150);
+		userTable.getColumnModel().getColumn(2).setPreferredWidth(250);
+		userTable.getColumnModel().getColumn(3).setPreferredWidth(150);
+		
+		// Thiết lập renderer và editor cho cột hành động
 		userTable.getColumnModel().getColumn(3).setCellRenderer(new ActionButtonRenderer());
 		userTable.getColumnModel().getColumn(3).setCellEditor(new ActionButtonEditor());
-		scrollPane = new JScrollPane(userTable);
-
-		buttonPanel = new JPanel();
-		addButton = new JButton("Thêm");
-		addButton.addMouseListener(new java.awt.event.MouseAdapter() {
-			public void mouseEntered(java.awt.event.MouseEvent evt) {
-				addButton.setBackground(new Color(40, 96, 175));
-			}
-
-			public void mouseExited(java.awt.event.MouseEvent evt) {
-				addButton.setBackground(new Color(51, 122, 255));
-			}
-		});
 		
-
+		// ScrollPane với border đẹp
+		scrollPane = new JScrollPane(userTable);
+		scrollPane.setBorder(BorderFactory.createLineBorder(borderColor));
+		scrollPane.getViewport().setBackground(Color.WHITE);
+		
+		// Tạo row sorter
+		TableRowSorter<DefaultTableModel> sorter = new TableRowSorter<>(tableModel);
+		userTable.setRowSorter(sorter);
+	}
+	
+	private JPanel createFooterPanel() {
+		JPanel footerPanel = new JPanel(new BorderLayout());
+		footerPanel.setOpaque(false);
+		
+		buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+		buttonPanel.setOpaque(false);
+		
+		addButton = new JButton("+ Thêm người dùng");
+		addButton.setPreferredSize(new Dimension(150, 38));
+		addButton.setBackground(primaryColor);
+		addButton.setForeground(Color.WHITE);
+		addButton.setFocusPainted(false);
+		addButton.setBorderPainted(false);
+		addButton.setFont(new Font("Segoe UI", Font.BOLD, 13));
+		
 		buttonPanel.add(addButton);
-
-		add(new JLabel("Quản lý Người dùng", SwingConstants.CENTER), BorderLayout.NORTH);
-		add(searchPanel, BorderLayout.NORTH);
-		add(scrollPane, BorderLayout.CENTER);
-		add(buttonPanel, BorderLayout.SOUTH);
-
-		userDAO = new UserDAO();
-		employeeDAO = new EmployeeDAO();
-		loadUserData();
-		addButton.addActionListener(e -> {
-			addUser();
-		});
-
-		userTable.addMouseListener(new java.awt.event.MouseAdapter() {
+		
+		footerPanel.add(buttonPanel, BorderLayout.EAST);
+		
+		return footerPanel;
+	}
+	
+	private void setupEventHandlers() {
+		searchButton.addActionListener(e -> searchUsers());
+		refreshButton.addActionListener(e -> loadUserData());
+		addButton.addActionListener(e -> addUser());
+		
+		// Hiệu ứng hover cho nút
+		addHoverEffect(searchButton, secondaryColor, new Color(30, 132, 199));
+		addHoverEffect(addButton, primaryColor, new Color(30, 108, 165));
+		addHoverEffect(refreshButton, Color.WHITE, new Color(240, 240, 240), secondaryColor, secondaryColor);
+	}
+	
+	private void addHoverEffect(JButton button, Color normalBg, Color hoverBg) {
+		button.addMouseListener(new MouseAdapter() {
 			@Override
-			public void mouseClicked(java.awt.event.MouseEvent evt) {
-				int row = userTable.rowAtPoint(evt.getPoint());
-				int col = userTable.columnAtPoint(evt.getPoint());
-				
-				if (row >= 0 && col == 3) {
-					
-					Rectangle cellRect = userTable.getCellRect(row, col, false);
-					int x = evt.getX() - cellRect.x;
-					int y = evt.getY() - cellRect.y;
-					
-					if (x < cellRect.width / 2) {
-						UUID userId = ((ActionButtonPanel) userTable.getModel().getValueAt(row, col)).getUserId();
-						editUser(userId);
-					} else {
-						UUID userId = ((ActionButtonPanel) userTable.getModel().getValueAt(row, col)).getUserId();
-						deleteUser(userId);
-					}
-				}
+			public void mouseEntered(MouseEvent e) {
+				button.setBackground(hoverBg);
+			}
+			
+			@Override
+			public void mouseExited(MouseEvent e) {
+				button.setBackground(normalBg);
+			}
+		});
+	}
+	
+	private void addHoverEffect(JButton button, Color normalBg, Color hoverBg, Color normalFg, Color hoverFg) {
+		button.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseEntered(MouseEvent e) {
+				button.setBackground(hoverBg);
+				button.setForeground(hoverFg);
+			}
+			
+			@Override
+			public void mouseExited(MouseEvent e) {
+				button.setBackground(normalBg);
+				button.setForeground(normalFg);
 			}
 		});
 	}
 
-	private class ActionButtonRenderer extends JPanel implements TableCellRenderer {
+	private class ActionButtonRenderer implements TableCellRenderer {
+		private JPanel panel;
 		private JButton editButton;
 		private JButton deleteButton;
 
 		public ActionButtonRenderer() {
-			setLayout(new FlowLayout(FlowLayout.CENTER, 5, 0));
+			panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+			panel.setOpaque(true);
+			
 			editButton = new JButton("Sửa");
-			deleteButton = new JButton("Xóa");
-			
-			editButton.setBackground(new Color(51, 122, 255));
+			editButton.setPreferredSize(new Dimension(70, 30));
+			editButton.setBackground(secondaryColor);
 			editButton.setForeground(Color.WHITE);
-			deleteButton.setBackground(new Color(217, 83, 79));
-			deleteButton.setForeground(Color.WHITE);
-			
 			editButton.setFocusPainted(false);
-			deleteButton.setFocusPainted(false);
+			editButton.setBorderPainted(false);
+			editButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
 			
-			add(editButton);
-			add(deleteButton);
+			deleteButton = new JButton("Xóa");
+			deleteButton.setPreferredSize(new Dimension(70, 30));
+			deleteButton.setBackground(new Color(231, 76, 60));
+			deleteButton.setForeground(Color.WHITE);
+			deleteButton.setFocusPainted(false);
+			deleteButton.setBorderPainted(false);
+			deleteButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+			
+			panel.add(editButton);
+			panel.add(deleteButton);
 		}
 
 		@Override
 		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
 			if (isSelected) {
-				setBackground(table.getSelectionBackground());
+				panel.setBackground(table.getSelectionBackground());
 			} else {
-				setBackground(table.getBackground());
+				panel.setBackground(row % 2 == 0 ? Color.WHITE : new Color(248, 249, 250));
 			}
-			return this;
+			return panel;
 		}
 	}
 
@@ -151,31 +284,47 @@ public class UserManagementPanel extends JPanel {
 		private JButton editButton;
 		private JButton deleteButton;
 		private UUID userId;
+		private boolean isPushed;
 
 		public ActionButtonEditor() {
 			super(new JTextField());
-			panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
+			
+			panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
+			
 			editButton = new JButton("Sửa");
-			deleteButton = new JButton("Xóa");
-
-			editButton.setBackground(new Color(66, 139, 202));
+			editButton.setPreferredSize(new Dimension(70, 30));
+			editButton.setBackground(secondaryColor);
 			editButton.setForeground(Color.WHITE);
 			editButton.setFocusPainted(false);
-
-			deleteButton.setBackground(new Color(217, 83, 79));
+			editButton.setBorderPainted(false);
+			editButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
+			
+			deleteButton = new JButton("Xóa");
+			deleteButton.setPreferredSize(new Dimension(70, 30));
+			deleteButton.setBackground(new Color(231, 76, 60));
 			deleteButton.setForeground(Color.WHITE);
 			deleteButton.setFocusPainted(false);
+			deleteButton.setBorderPainted(false);
+			deleteButton.setFont(new Font("Segoe UI", Font.BOLD, 12));
 
 			panel.add(editButton);
 			panel.add(deleteButton);
+			
+			// Thêm hover effect cho các nút
+			addHoverEffect(editButton, secondaryColor, new Color(30, 132, 199));
+			addHoverEffect(deleteButton, new Color(231, 76, 60), new Color(211, 56, 40));
 
 			editButton.addActionListener(e -> {
+				isPushed = true;
+				fireEditingStopped();
 				if (userId != null) {
 					editUser(userId);
 				}
 			});
 
 			deleteButton.addActionListener(e -> {
+				isPushed = true;
+				fireEditingStopped();
 				if (userId != null) {
 					deleteUser(userId);
 				}
@@ -184,13 +333,35 @@ public class UserManagementPanel extends JPanel {
 
 		@Override
 		public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-			userId = (UUID) table.getValueAt(row, 0);
+			if (value instanceof ActionButtonPanel) {
+				userId = ((ActionButtonPanel) value).getUserId();
+			} else {
+				// Lấy userId từ dòng hiện tại
+				try {
+					int modelRow = table.convertRowIndexToModel(row);
+					Object idObj = tableModel.getValueAt(modelRow, 0);
+					if (idObj instanceof UUID) {
+						userId = (UUID) idObj;
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
+			panel.setBackground(table.getSelectionBackground());
 			return panel;
 		}
 
 		@Override
 		public Object getCellEditorValue() {
-			return userId;
+			isPushed = false;
+			return new ActionButtonPanel(userId);
+		}
+		
+		@Override
+		public boolean stopCellEditing() {
+			isPushed = false;
+			return super.stopCellEditing();
 		}
 	}
 
@@ -208,16 +379,26 @@ public class UserManagementPanel extends JPanel {
 
 	private void loadUserData() {
 		try {
-			List<User> users = userDAO.getAllUsers();
+			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+			List<User> users = userService.getAllUsers();
 			tableModel.setRowCount(0);
 
 			for (User user : users) {
-				System.out.println(user.getEmployee());
 				String employeeName = (user.getEmployee() != null) ? user.getEmployee().getEmployeeName() : "N/A";
-				tableModel.addRow(new Object[] { user.getUsername(), user.getRole(), employeeName,
-						new ActionButtonPanel(user.getId()) });
+				tableModel.addRow(new Object[] { 
+					user.getUsername(), 
+					user.getRole(), 
+					employeeName,
+					new ActionButtonPanel(user.getId()) 
+				});
+			}
+			setCursor(Cursor.getDefaultCursor());
+			
+			if (users.isEmpty()) {
+				JOptionPane.showMessageDialog(this, "Không có dữ liệu người dùng.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
 			}
 		} catch (SQLException e) {
+			setCursor(Cursor.getDefaultCursor());
 			JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu người dùng: " + e.getMessage(), "Lỗi",
 					JOptionPane.ERROR_MESSAGE);
 			e.printStackTrace();
@@ -229,35 +410,26 @@ public class UserManagementPanel extends JPanel {
 		String searchType = (String) searchTypeComboBox.getSelectedItem();
 		
 		try {
-			List<User> users = userDAO.getAllUsers();
+			setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+			List<User> users = userService.searchUsers(searchText, searchType);
 			tableModel.setRowCount(0);
 			
 			for (User user : users) {
-				boolean match = false;
 				String employeeName = (user.getEmployee() != null) ? user.getEmployee().getEmployeeName() : "N/A";
-				
-				switch(searchType) {
-					case "Tên đăng nhập":
-						match = user.getUsername().toLowerCase().contains(searchText.toLowerCase());
-						break;
-					case "Vai trò":
-						match = user.getRole().toLowerCase().contains(searchText.toLowerCase());
-						break;
-					case "Tên nhân viên":
-						match = employeeName.toLowerCase().contains(searchText.toLowerCase());
-						break;
-				}
-				
-				if (match || searchText.isEmpty()) {
-					tableModel.addRow(new Object[] { 
-						user.getUsername(), 
-						user.getRole(), 
-						employeeName,
-						new ActionButtonPanel(user.getId()) 
-					});
-				}
+				tableModel.addRow(new Object[] { 
+					user.getUsername(), 
+					user.getRole(), 
+					employeeName,
+					new ActionButtonPanel(user.getId()) 
+				});
+			}
+			setCursor(Cursor.getDefaultCursor());
+			
+			if (users.isEmpty()) {
+				JOptionPane.showMessageDialog(this, "Không tìm thấy người dùng phù hợp.", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
 			}
 		} catch (SQLException e) {
+			setCursor(Cursor.getDefaultCursor());
 			JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm người dùng: " + e.getMessage(), "Lỗi",
 					JOptionPane.ERROR_MESSAGE);
 			e.printStackTrace();
@@ -268,78 +440,48 @@ public class UserManagementPanel extends JPanel {
 		AddUserDialog dialog = new AddUserDialog((Frame) SwingUtilities.getWindowAncestor(this));
 		dialog.setVisible(true);
 		
-		if (dialog.isConfirmed()) {
-			UserDTO userDTO = dialog.getUserDTO();
-			try {
-				User newUser = new User();
-				newUser.setId(userDTO.getId());
-				newUser.setUsername(userDTO.getUsername());
-				newUser.setPassword(userDTO.getPassword());
-				newUser.setRole(userDTO.getRole());
-				newUser.setEmployeeId(userDTO.getEmployeeId());
-				newUser.setCreatedAt(new java.sql.Date(System.currentTimeMillis()));
-				newUser.setUpdatedAt(new java.sql.Date(System.currentTimeMillis()));
-
-				userDAO.addUser(newUser);
-
-				loadUserData();
-				JOptionPane.showMessageDialog(this, "Thêm người dùng thành công.", "Thành công", 
-						JOptionPane.INFORMATION_MESSAGE);
-
-			} catch (SQLException ex) {
-				JOptionPane.showMessageDialog(this, "Lỗi khi thêm người dùng vào database: " + ex.getMessage(), 
-						"Lỗi", JOptionPane.ERROR_MESSAGE);
-				ex.printStackTrace();
-			}
+		if (dialog.isUserAdded()) {
+			loadUserData();
 		}
 	}
 
 	private void editUser(UUID userId) {
-		EditUserDialog dialog = new EditUserDialog((Frame) SwingUtilities.getWindowAncestor(this), userId);
-		dialog.setVisible(true);
-		
-		if (dialog.isConfirmed()) {
-			EditUserDTO userDTO = dialog.getUserDTO();
-			try {
+		try {
+			User user = userService.getUserById(userId);
+			if (user != null) {
+				EditUserDialog dialog = new EditUserDialog((Frame) SwingUtilities.getWindowAncestor(this), userId);
+				dialog.setVisible(true);
 				
-				User updatedUser = new User();
-				updatedUser.setId(userDTO.getId());
-				updatedUser.setUsername(userDTO.getUsername());
-				if (userDTO.getPassword() != null) {
-					updatedUser.setPassword(userDTO.getPassword()); // Lưu ý: Nên mã hóa mật khẩu
+				if (dialog.isUserUpdated()) {
+					loadUserData();
 				}
-				updatedUser.setRole(userDTO.getRole());
-				updatedUser.setEmployeeId(userDTO.getEmployeeId());
-				updatedUser.setUpdatedAt(new java.sql.Date(System.currentTimeMillis()));
-
-				userDAO.updateUser(updatedUser);
-
-				loadUserData();
-				JOptionPane.showMessageDialog(this, "Cập nhật người dùng thành công.", "Thành công", 
-						JOptionPane.INFORMATION_MESSAGE);
-
-			} catch (SQLException ex) {
-				JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật người dùng trong database: " + ex.getMessage(), 
-						"Lỗi", JOptionPane.ERROR_MESSAGE);
-				ex.printStackTrace();
+			} else {
+				JOptionPane.showMessageDialog(this, "Không tìm thấy thông tin người dùng.", "Lỗi", JOptionPane.ERROR_MESSAGE);
 			}
+		} catch (SQLException e) {
+			JOptionPane.showMessageDialog(this, "Lỗi khi lấy thông tin người dùng: " + e.getMessage(), "Lỗi",
+					JOptionPane.ERROR_MESSAGE);
+			e.printStackTrace();
 		}
 	}
 
 	private void deleteUser(UUID userId) {
-		DeleteUserDialog dialog = new DeleteUserDialog((Frame) SwingUtilities.getWindowAncestor(this), userId);
-		dialog.setVisible(true);
-
-		if (dialog.isConfirmed()) {
-			try {
-				userDAO.deleteUser(userId);
-				JOptionPane.showMessageDialog(this, "Xóa người dùng thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
-				loadUserData();
-			} catch (SQLException e) {
-				JOptionPane.showMessageDialog(this, "Lỗi khi xóa người dùng: " + e.getMessage(),
-						"Lỗi", JOptionPane.ERROR_MESSAGE);
+		try {
+			User user = userService.getUserById(userId);
+			if (user != null) {
+				DeleteUserDialog dialog = new DeleteUserDialog((Frame) SwingUtilities.getWindowAncestor(this), userId);
+				dialog.setVisible(true);
+				
+				if (dialog.isConfirmed()) {
+					loadUserData();
+				}
+			} else {
+				JOptionPane.showMessageDialog(this, "Không tìm thấy thông tin người dùng.", "Lỗi", JOptionPane.ERROR_MESSAGE);
 			}
+		} catch (SQLException e) {
+			JOptionPane.showMessageDialog(this, "Lỗi khi lấy thông tin người dùng: " + e.getMessage(), "Lỗi",
+					JOptionPane.ERROR_MESSAGE);
+			e.printStackTrace();
 		}
 	}
-
 }

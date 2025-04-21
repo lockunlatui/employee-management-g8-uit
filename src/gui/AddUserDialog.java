@@ -199,6 +199,10 @@ public class AddUserDialog extends JDialog {
         return confirmed;
     }
 
+    public boolean isUserAdded() {
+        return confirmed;
+    }
+
     public UserDTO getUserDTO() {
         return userDTO;
     }

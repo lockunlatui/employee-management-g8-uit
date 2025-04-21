@@ -91,6 +91,26 @@ public class DepartmentDAO {
         }
     }
 
+    public boolean isDepartmentNameExists(String departmentName) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM departments WHERE department_name = ?";
+        
+        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+            statement.setString(1, departmentName);
+            
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (resultSet.next()) {
+                    return resultSet.getInt(1) > 0;
+                }
+            }
+        }
+        
+        return false;
+    }
+    
+    public boolean isDepartmentCodeExists(String departmentCode) throws SQLException {
+        return false;
+    }
+
     private byte[] uuidToBytes(UUID uuid) {
         long msb = uuid.getMostSignificantBits();
         long lsb = uuid.getLeastSignificantBits();

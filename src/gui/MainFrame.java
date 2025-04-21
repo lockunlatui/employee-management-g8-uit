@@ -38,9 +38,7 @@ public class MainFrame extends JFrame {
 		leftMenu = new LeftMenu(this);
 		add(leftMenu, BorderLayout.WEST);
 
-		contentPanel = new JPanel();
-		contentPanel.setLayout(new BorderLayout());
-		contentPanel.add(new JLabel("Chào mừng đến với ứng dụng!", SwingConstants.CENTER), BorderLayout.CENTER);
+		contentPanel = new HomePagePanel(this);
 		add(contentPanel, BorderLayout.CENTER);
 
 		setVisible(true);
@@ -56,5 +54,28 @@ public class MainFrame extends JFrame {
 		add(contentPanel, BorderLayout.CENTER);
 		revalidate();
 		repaint();
+	}
+	
+	public void showDashboardPanel() {
+		setMainContent(new HomePagePanel(this));
+	}
+	
+	public void showEmployeePanel() {
+		setMainContent(new EmployeeManagementPanel());
+	}
+	
+	public void showDepartmentPanel() {
+		setMainContent(new DepartmentManagementPanel());
+	}
+	
+	public void showUserPanel() {
+		setMainContent(new UserManagementPanel());
+	}
+	
+	public void logout() {
+		JOptionPane.showMessageDialog(this, 
+			"Bạn đã đăng xuất khỏi hệ thống.", 
+			"Đăng xuất", 
+			JOptionPane.INFORMATION_MESSAGE);
 	}
 }
