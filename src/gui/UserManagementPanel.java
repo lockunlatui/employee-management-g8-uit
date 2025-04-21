@@ -5,21 +5,20 @@ import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.sql.SQLException;
+import java.util.UUID;
 
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableCellEditor;
 
-import dao.EmployeeDAO;
-import dao.UserDAO;
+import service.UserService;
+import service.UserServiceImpl;
 import dto.UserDTO;
 import dto.EditUserDTO;
 
-import java.util.UUID;
-import java.util.List;
-
-import model.Employee;
 import model.User;
+
+import java.util.List;
 
 @SuppressWarnings("serial")
 public class UserManagementPanel extends JPanel {
@@ -29,8 +28,7 @@ public class UserManagementPanel extends JPanel {
 	private JScrollPane scrollPane;
 	private JButton addButton;
 	private JPanel buttonPanel;
-	private UserDAO userDAO;
-	private EmployeeDAO employeeDAO;
+	private UserService userService;
 	private JTextField searchField;
 	private JComboBox<String> searchTypeComboBox;
 	private JButton searchButton;
@@ -75,7 +73,6 @@ public class UserManagementPanel extends JPanel {
 			}
 		});
 		
-
 		buttonPanel.add(addButton);
 
 		add(new JLabel("Quản lý Người dùng", SwingConstants.CENTER), BorderLayout.NORTH);
@@ -83,8 +80,7 @@ public class UserManagementPanel extends JPanel {
 		add(scrollPane, BorderLayout.CENTER);
 		add(buttonPanel, BorderLayout.SOUTH);
 
-		userDAO = new UserDAO();
-		employeeDAO = new EmployeeDAO();
+		userService = new UserServiceImpl();
 		loadUserData();
 		addButton.addActionListener(e -> {
 			addUser();
@@ -97,7 +93,6 @@ public class UserManagementPanel extends JPanel {
 				int col = userTable.columnAtPoint(evt.getPoint());
 				
 				if (row >= 0 && col == 3) {
-					
 					Rectangle cellRect = userTable.getCellRect(row, col, false);
 					int x = evt.getX() - cellRect.x;
 					int y = evt.getY() - cellRect.y;
@@ -208,14 +203,17 @@ public class UserManagementPanel extends JPanel {
 
 	private void loadUserData() {
 		try {
-			List<User> users = userDAO.getAllUsers();
+			List<User> users = userService.getAllUsers();
 			tableModel.setRowCount(0);
 
 			for (User user : users) {
-				System.out.println(user.getEmployee());
 				String employeeName = (user.getEmployee() != null) ? user.getEmployee().getEmployeeName() : "N/A";
-				tableModel.addRow(new Object[] { user.getUsername(), user.getRole(), employeeName,
-						new ActionButtonPanel(user.getId()) });
+				tableModel.addRow(new Object[] { 
+					user.getUsername(), 
+					user.getRole(), 
+					employeeName,
+					new ActionButtonPanel(user.getId()) 
+				});
 			}
 		} catch (SQLException e) {
 			JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu người dùng: " + e.getMessage(), "Lỗi",
@@ -229,33 +227,17 @@ public class UserManagementPanel extends JPanel {
 		String searchType = (String) searchTypeComboBox.getSelectedItem();
 		
 		try {
-			List<User> users = userDAO.getAllUsers();
+			List<User> users = userService.searchUsers(searchText, searchType);
 			tableModel.setRowCount(0);
 			
 			for (User user : users) {
-				boolean match = false;
 				String employeeName = (user.getEmployee() != null) ? user.getEmployee().getEmployeeName() : "N/A";
-				
-				switch(searchType) {
-					case "Tên đăng nhập":
-						match = user.getUsername().toLowerCase().contains(searchText.toLowerCase());
-						break;
-					case "Vai trò":
-						match = user.getRole().toLowerCase().contains(searchText.toLowerCase());
-						break;
-					case "Tên nhân viên":
-						match = employeeName.toLowerCase().contains(searchText.toLowerCase());
-						break;
-				}
-				
-				if (match || searchText.isEmpty()) {
-					tableModel.addRow(new Object[] { 
-						user.getUsername(), 
-						user.getRole(), 
-						employeeName,
-						new ActionButtonPanel(user.getId()) 
-					});
-				}
+				tableModel.addRow(new Object[] { 
+					user.getUsername(), 
+					user.getRole(), 
+					employeeName,
+					new ActionButtonPanel(user.getId()) 
+				});
 			}
 		} catch (SQLException e) {
 			JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm người dùng: " + e.getMessage(), "Lỗi",
@@ -280,14 +262,14 @@ public class UserManagementPanel extends JPanel {
 				newUser.setCreatedAt(new java.sql.Date(System.currentTimeMillis()));
 				newUser.setUpdatedAt(new java.sql.Date(System.currentTimeMillis()));
 
-				userDAO.addUser(newUser);
+				userService.addUser(newUser);
 
 				loadUserData();
 				JOptionPane.showMessageDialog(this, "Thêm người dùng thành công.", "Thành công", 
 						JOptionPane.INFORMATION_MESSAGE);
 
 			} catch (SQLException ex) {
-				JOptionPane.showMessageDialog(this, "Lỗi khi thêm người dùng vào database: " + ex.getMessage(), 
+				JOptionPane.showMessageDialog(this, "Lỗi khi thêm người dùng: " + ex.getMessage(), 
 						"Lỗi", JOptionPane.ERROR_MESSAGE);
 				ex.printStackTrace();
 			}
@@ -301,25 +283,24 @@ public class UserManagementPanel extends JPanel {
 		if (dialog.isConfirmed()) {
 			EditUserDTO userDTO = dialog.getUserDTO();
 			try {
-				
 				User updatedUser = new User();
 				updatedUser.setId(userDTO.getId());
 				updatedUser.setUsername(userDTO.getUsername());
 				if (userDTO.getPassword() != null) {
-					updatedUser.setPassword(userDTO.getPassword()); // Lưu ý: Nên mã hóa mật khẩu
+					updatedUser.setPassword(userDTO.getPassword());
 				}
 				updatedUser.setRole(userDTO.getRole());
 				updatedUser.setEmployeeId(userDTO.getEmployeeId());
 				updatedUser.setUpdatedAt(new java.sql.Date(System.currentTimeMillis()));
 
-				userDAO.updateUser(updatedUser);
+				userService.updateUser(updatedUser);
 
 				loadUserData();
 				JOptionPane.showMessageDialog(this, "Cập nhật người dùng thành công.", "Thành công", 
 						JOptionPane.INFORMATION_MESSAGE);
 
 			} catch (SQLException ex) {
-				JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật người dùng trong database: " + ex.getMessage(), 
+				JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật người dùng: " + ex.getMessage(), 
 						"Lỗi", JOptionPane.ERROR_MESSAGE);
 				ex.printStackTrace();
 			}
@@ -332,7 +313,7 @@ public class UserManagementPanel extends JPanel {
 
 		if (dialog.isConfirmed()) {
 			try {
-				userDAO.deleteUser(userId);
+				userService.deleteUser(userId);
 				JOptionPane.showMessageDialog(this, "Xóa người dùng thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
 				loadUserData();
 			} catch (SQLException e) {

@@ -204,5 +204,84 @@ public class UserDAO {
         }
     }
 
+    public boolean isUsernameExists(String username, UUID excludeUserId) throws SQLException {
+        String sql;
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+        
+        try {
+            conn = ConnectionManager.getConnection();
+            
+            if (excludeUserId == null) {
+                sql = "SELECT COUNT(*) FROM Users WHERE username = ?";
+                pstmt = conn.prepareStatement(sql);
+                pstmt.setString(1, username);
+            } else {
+                sql = "SELECT COUNT(*) FROM Users WHERE username = ? AND id != ?";
+                pstmt = conn.prepareStatement(sql);
+                pstmt.setString(1, username);
+                pstmt.setBytes(2, convertUUIDtoBytes(excludeUserId));
+            }
+            
+            rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (SQLException e) {
+            System.err.println("Error in isUsernameExists: " + e.getMessage());
+            throw e;
+        } finally {
+            closeResources(conn, pstmt, rs);
+        }
+        
+        return false;
+    }
+
+	public boolean isEmployeeHasAccount(UUID employeeId) throws SQLException {
+		String sql = "SELECT COUNT(*) FROM Users WHERE employee_id = ?";
+		Connection conn = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		try {
+			conn = ConnectionManager.getConnection();
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setBytes(1, convertUUIDtoBytes(employeeId));
+			rs = pstmt.executeQuery();
+			if (rs.next()) {
+				return rs.getInt(1) > 0;
+			}
+		} catch (SQLException e) {
+			System.err.println("Error in isEmployeeHasAccount: " + e.getMessage());
+			throw e;
+		} finally {
+			closeResources(conn, pstmt, rs);
+		}
+		return false;
+	}
+
+	public boolean isEmployeeHasAccount(UUID employeeId, UUID excludeUserId) throws SQLException {
+		String sql = "SELECT COUNT(*) FROM Users WHERE employee_id = ? AND id != ?";
+		Connection conn = null;
+		PreparedStatement pstmt = null;
+		ResultSet rs = null;
+		try {
+			conn = ConnectionManager.getConnection();
+			pstmt = conn.prepareStatement(sql);
+			pstmt.setBytes(1, convertUUIDtoBytes(employeeId));
+			pstmt.setBytes(2, convertUUIDtoBytes(excludeUserId));
+			rs = pstmt.executeQuery();
+			if (rs.next()) {
+				return rs.getInt(1) > 0;
+			}
+		} catch (SQLException e) {
+			System.err.println("Error in isEmployeeHasAccount: " + e.getMessage());
+			throw e;
+		} finally {
+			closeResources(conn, pstmt, rs);
+		}
+		return false;
+	}
+
 }
 
