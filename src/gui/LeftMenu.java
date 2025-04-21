@@ -84,7 +84,7 @@ public class LeftMenu extends JPanel implements ActionListener {
         } else if (command.equals("Quản lí phòng ban")) {
             contentPanel = new DepartmentManagementPanel();
         } else if (command.equals("Quản lí chấm công")) {
-            contentPanel = new AttendanceLogPanel();
+            contentPanel = new AttendanceManagementPanel();
         } else if (command.equals("Quản lí lương")) {
             contentPanel = new SalaryManagementPanel();
         } else if (command.equals("Quản lí người dùng")) {
