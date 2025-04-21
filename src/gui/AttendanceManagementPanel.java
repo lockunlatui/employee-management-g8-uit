@@ -136,7 +136,7 @@ public class AttendanceManagementPanel extends JPanel {
             // Thêm vào ComboBox
             for (Employee employee : employees) {
                 String departmentName = employee.getDepartment() != null ? 
-                        employee.getDepartment().getDepartmentName() : "";
+                        employee.getDepartment().getName() : "";
                 EmployeeItem item = new EmployeeItem(
                         employee.getId(), 
                         employee.getEmployeeName(), 
