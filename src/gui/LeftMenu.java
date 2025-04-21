@@ -184,7 +184,7 @@ public class LeftMenu extends JPanel implements ActionListener {
         setActiveButton(clickedButton);
         
         if (source == homeButton) {
-            contentPanel = new HomePagePanel();
+            contentPanel = new HomePagePanel(mainFrame);
         } else if (source == employeeButton) {
             contentPanel = new EmployeeManagementPanel();
         } else if (source == departmentButton) {
