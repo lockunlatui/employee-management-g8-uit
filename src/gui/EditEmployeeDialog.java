@@ -9,7 +9,7 @@ public class EditEmployeeDialog extends JDialog {
     private final String employeeId;
     private JTextField nameField;
     private JComboBox<String> departmentCombo;
-    private JTextField statusField;
+    private JComboBox<String> statusCombo;
     private JTextField joinDateField;
     private final DialogCallback callback;
 
@@ -29,7 +29,8 @@ public class EditEmployeeDialog extends JDialog {
 
         nameField = new JTextField(currentName);
         departmentCombo = new JComboBox<>();
-        statusField = new JTextField(currentStatus);
+        statusCombo = new JComboBox<>(new String[]{"Hoạt động", "Nghỉ việc"});
+        statusCombo.setSelectedItem(currentStatus);
         joinDateField = new JTextField(currentJoinDate);
 
         // Load departments vào combobox
@@ -40,7 +41,7 @@ public class EditEmployeeDialog extends JDialog {
         add(new JLabel("Phòng ban:"));
         add(departmentCombo);
         add(new JLabel("Trạng thái:"));
-        add(statusField);
+        add(statusCombo);
         add(new JLabel("Ngày vào làm (YYYY-MM-DD):"));
         add(joinDateField);
 
@@ -91,17 +92,17 @@ public class EditEmployeeDialog extends JDialog {
     private void updateEmployee() {
         try {
             String name = nameField.getText();
-            String departmentName = (String) departmentCombo.getSelectedItem();
-            String status = statusField.getText();
+            String department = (String) departmentCombo.getSelectedItem();
+            String status = (String) statusCombo.getSelectedItem();
             String joinDate = joinDateField.getText();
 
-            if (name.isEmpty() || departmentName == null || status.isEmpty() || joinDate.isEmpty()) {
+            if (name.isEmpty() || department == null || status.isEmpty() || joinDate.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "Vui lòng điền đầy đủ thông tin!");
                 return;
             }
 
             // Lấy department_id từ tên phòng ban
-            String departmentId = getDepartmentIdByName(departmentName);
+            String departmentId = getDepartmentIdByName(department);
             if (departmentId == null) {
                 JOptionPane.showMessageDialog(this, "Không tìm thấy phòng ban!");
                 return;

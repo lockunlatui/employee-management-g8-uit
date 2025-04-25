@@ -8,7 +8,7 @@ import database.ConnectionManager;
 public class AddEmployeeDialog extends JDialog {
     private JTextField nameField;
     private JComboBox<String> departmentCombo;
-    private JTextField statusField;
+    private JComboBox<String> statusCombo;
     private JTextField joinDateField;
     private final DialogCallback callback;
 
@@ -24,7 +24,8 @@ public class AddEmployeeDialog extends JDialog {
 
         nameField = new JTextField();
         departmentCombo = new JComboBox<>();
-        statusField = new JTextField();
+        statusCombo = new JComboBox<>(new String[]{"Hoạt động"});
+        statusCombo.setEnabled(false);
         joinDateField = new JTextField();
 
         // Load departments vào combobox
@@ -35,7 +36,7 @@ public class AddEmployeeDialog extends JDialog {
         add(new JLabel("Phòng ban:"));
         add(departmentCombo);
         add(new JLabel("Trạng thái:"));
-        add(statusField);
+        add(statusCombo);
         add(new JLabel("Ngày vào làm (YYYY-MM-DD):"));
         add(joinDateField);
 
@@ -86,7 +87,7 @@ public class AddEmployeeDialog extends JDialog {
         try {
             String name = nameField.getText();
             String departmentName = (String) departmentCombo.getSelectedItem();
-            String status = statusField.getText();
+            String status = (String) statusCombo.getSelectedItem();
             String joinDate = joinDateField.getText();
 
             if (name.isEmpty() || departmentName == null || status.isEmpty() || joinDate.isEmpty()) {
