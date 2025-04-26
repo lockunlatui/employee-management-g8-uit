@@ -7,25 +7,27 @@ import java.sql.SQLException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.IntStream;
 import java.util.ArrayList;
 import javax.swing.*;
 import javax.swing.table.*;
 
 import dao.EmployeeDAO;
-import dao.SalaryDAO;
 import model.Employee;
 import model.Salary;
+import service.SalaryService;
+import service.SalaryServiceImpl;
+import utils.CurrencyUtils;
 
 @SuppressWarnings("serial")
 public class SalaryManagementPanel extends JPanel {
+    SalaryService salaryService = new SalaryServiceImpl();
+    EmployeeDAO employeeService = new EmployeeDAO();
 
     private JTable salaryTable;
     private DefaultTableModel tableModel;
     private JTextField searchField;
     private JComboBox<String> statusFilter;
     private JLabel recordCountLabel;
-    private boolean isSelecting = false;
 
     private List<Salary> allSalaries = new ArrayList<>();
     private List<Salary> filteredSalaries = new ArrayList<>();
@@ -74,13 +76,13 @@ public class SalaryManagementPanel extends JPanel {
         add(controlPanel, BorderLayout.BEFORE_FIRST_LINE);
 
         // Table columns
-        String[] columnNames = { "STT", "Mã nhân viên", "Tên nhân viên", "Lương cơ bản", "Khấu trừ",
+        String[] columnNames = { "STT", "Tên nhân viên", "Lương cơ bản", "Khấu trừ",
                 "Trạng thái", "Ngày tạo", "Ngày cập nhập", "Hành động" };
 
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 8;
+                return column == 7;
             }
         };
 
@@ -133,9 +135,9 @@ public class SalaryManagementPanel extends JPanel {
 
     // Load all salary data from database
     private void loadSalaryData() {
-        SalaryDAO dao = new SalaryDAO();
+
         try {
-            allSalaries = dao.getAllSalaries();
+            allSalaries = salaryService.getAllSalaries();
             filterData();
         } catch (SQLException e) {
             JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu: " + e.getMessage());
@@ -160,7 +162,7 @@ public class SalaryManagementPanel extends JPanel {
 
     // Update table content based on filtered results and current page
     private void updateTable() {
-        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
         tableModel.setRowCount(0);
         int start = (currentPage - 1) * rowsPerPage;
         int end = Math.min(start + rowsPerPage, filteredSalaries.size());
@@ -170,7 +172,6 @@ public class SalaryManagementPanel extends JPanel {
         for (int i = start; i < end; i++) {
             Salary salary = filteredSalaries.get(i);
 
-            UUID employeeId = salary.getEmployeeId() != null ? salary.getEmployeeId() : null;
             String employeeName = salary.getEmployee() != null ? salary.getEmployee().getEmployeeName() : nullString;
             BigDecimal base = salary.getBaseSalary() != null ? salary.getBaseSalary() : BigDecimal.ZERO;
             BigDecimal deductions = salary.getDeductions() != null ? salary.getDeductions() : BigDecimal.ZERO;
@@ -180,10 +181,9 @@ public class SalaryManagementPanel extends JPanel {
 
             tableModel.addRow(new Object[] {
                     i + 1,
-                    employeeId,
                     employeeName,
-                    base,
-                    deductions,
+                    CurrencyUtils.formatVND(base),
+                    CurrencyUtils.formatVND(deductions),
                     status,
                     createdAt,
                     updatedAt,
@@ -196,8 +196,6 @@ public class SalaryManagementPanel extends JPanel {
 
     // Dialog for adding a new salary entry
     private void openAddSalaryDialog() {
-        SalaryDAO salaryDAO = new SalaryDAO();
-        EmployeeDAO employeeDAO = new EmployeeDAO();
 
         JDialog dialog = new JDialog((Frame) null, "Thêm lương", true);
         JPanel panel = new JPanel(new GridLayout(6, 2, 10, 10));
@@ -213,8 +211,8 @@ public class SalaryManagementPanel extends JPanel {
         panel.add(baseField);
 
         panel.add(new JLabel("Khấu trừ:"));
-        JTextField allowanceField = new JTextField();
-        panel.add(allowanceField);
+        JTextField deductionsField = new JTextField();
+        panel.add(deductionsField);
 
         panel.add(new JLabel("Trạng thái:"));
         JComboBox<String> statusBox = new JComboBox<>(
@@ -227,7 +225,7 @@ public class SalaryManagementPanel extends JPanel {
         panel.add(cancel);
 
         try {
-            List<Employee> employees = employeeDAO.getAllEmployees();
+            List<Employee> employees = employeeService.getAllEmployees();
             for (Employee employee : employees) {
                 empBox.addItem(employee.getEmployeeName() + ":" + employee.getId());
             }
@@ -238,7 +236,7 @@ public class SalaryManagementPanel extends JPanel {
         add.addActionListener(e -> {
             try {
                 BigDecimal base = new BigDecimal(baseField.getText());
-                BigDecimal deductions = new BigDecimal(allowanceField.getText());
+                BigDecimal deductions = new BigDecimal(deductionsField.getText());
 
                 String selectedEmployee = (String) empBox.getSelectedItem();
                 String status = (String) statusBox.getSelectedItem();
@@ -254,7 +252,7 @@ public class SalaryManagementPanel extends JPanel {
                 Employee employee = new Employee();
                 employee.setEmployeeName(emName);
                 newSalary.setEmployee(employee);
-                salaryDAO.insertSalary(newSalary);
+                salaryService.insertSalary(newSalary);
                 allSalaries.add(0, newSalary);
                 filterData();
 
@@ -274,7 +272,6 @@ public class SalaryManagementPanel extends JPanel {
 
     // Dialog for editing an existing salary entry
     private void openEditSalaryDialog(Salary salary) {
-        SalaryDAO salaryDAO = new SalaryDAO();
 
         JDialog dialog = new JDialog((Frame) null, "Sửa thông tin lương", true);
         JPanel panel = new JPanel(new GridLayout(6, 2, 10, 10));
@@ -316,7 +313,7 @@ public class SalaryManagementPanel extends JPanel {
                 salary.setDeductions(deductions);
                 salary.setStatus(status);
                 salary.setUpdatedAt(new java.util.Date());
-                salaryDAO.updateSalary(salary);
+                salaryService.updateSalary(salary);
 
                 // Update the salary in the list
                 UUID targetUuid = salary.getId();
@@ -367,10 +364,9 @@ public class SalaryManagementPanel extends JPanel {
             editButton.addActionListener(e -> {
                 fireEditingStopped();
                 UUID salaryUuid = filteredSalaries.get(rowIndex).getId();
-                SalaryDAO salaryDAO = new SalaryDAO();
                 Salary salary = null;
                 try {
-                    salary = salaryDAO.getOne(salaryUuid);
+                    salary = salaryService.getSalaryById(salaryUuid);
                     openEditSalaryDialog(salary);
                 } catch (SQLException ex) {
                     JOptionPane.showMessageDialog(SalaryManagementPanel.this,
@@ -386,8 +382,7 @@ public class SalaryManagementPanel extends JPanel {
                         "Bạn có chắc chắn muốn xóa lương này?", "Xác nhận xóa", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
                     try {
-                        SalaryDAO dao = new SalaryDAO();
-                        dao.deleteSalary(salary.getId());
+                        salaryService.deleteSalary(salary.getId());
                         allSalaries.remove(salary);
                         filterData();
                         JOptionPane.showMessageDialog(SalaryManagementPanel.this, "Xóa thành công!");
