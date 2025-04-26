@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public class Department {
     private UUID id;
-    private String departmentName;
+    private String name;
     private Date createdAt;
     private Date updatedAt;
 
@@ -23,12 +23,12 @@ public class Department {
         this.id = id;
     }
 
-    public String getDepartmentName() {
-        return departmentName;
+    public String getName() {
+        return name;
     }
 
-    public void setDepartmentName(String departmentName) {
-        this.departmentName = departmentName;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public Date getCreatedAt() {

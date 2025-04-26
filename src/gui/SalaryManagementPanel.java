@@ -23,6 +23,7 @@ public class SalaryManagementPanel extends JPanel {
     private JTable salaryTable;
     private DefaultTableModel tableModel;
     private JTextField searchField;
+    private JComboBox<String> statusFilter;
     private JLabel recordCountLabel;
     private boolean isSelecting = false;
 
@@ -46,6 +47,22 @@ public class SalaryManagementPanel extends JPanel {
         searchPanel.add(new JLabel("Tìm kiếm theo tên nhân viên:"));
         searchField = new JTextField(20);
         searchPanel.add(searchField);
+        controlPanel.add(searchPanel, BorderLayout.CENTER);
+
+        // Filter by status
+
+        searchPanel.add(new JLabel("  Trạng thái:"));
+        statusFilter = new JComboBox<>(new String[] {
+                "Tất cả", "Đã thanh toán", "Chưa thanh toán", "Đang xử lý"
+        });
+        searchPanel.add(statusFilter);
+
+        // Status filter listener
+        statusFilter.addActionListener(e -> {
+            currentPage = 1;
+            filterData();
+        });
+
         controlPanel.add(searchPanel, BorderLayout.CENTER);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
@@ -128,9 +145,13 @@ public class SalaryManagementPanel extends JPanel {
     // Filter salaries by employee name
     private void filterData() {
         String keyword = searchField.getText().trim().toLowerCase();
+        String selectedStatus = (String) statusFilter.getSelectedItem();
+
         filteredSalaries.clear();
         for (Salary salary : allSalaries) {
-            if (salary.getEmployee().getEmployeeName().toLowerCase().contains(keyword)) {
+            boolean nameMatches = salary.getEmployee().getEmployeeName().toLowerCase().contains(keyword);
+            boolean statusMatches = selectedStatus.equals("Tất cả") || selectedStatus.equals(salary.getStatus());
+            if (nameMatches && statusMatches) {
                 filteredSalaries.add(salary);
             }
         }
@@ -298,7 +319,7 @@ public class SalaryManagementPanel extends JPanel {
                 salaryDAO.updateSalary(salary);
 
                 // Update the salary in the list
-                UUID targetUuid = salary.getId(); // hoặc salary.uuid nếu bạn dùng public field
+                UUID targetUuid = salary.getId();
                 int index = -1;
 
                 for (int i = 0; i < allSalaries.size(); i++) {
