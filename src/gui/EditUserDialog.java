@@ -1,6 +1,8 @@
 package gui;
 
 import javax.swing.*;
+import service.UserServiceImpl;
+import service.UserService;
 import java.awt.*;
 import java.sql.SQLException;
 import java.util.List;
@@ -16,7 +18,7 @@ public class EditUserDialog extends JDialog {
     private JTextField usernameField;
     private JPasswordField passwordField;
     private JComboBox<String> roleComboBox;
-    private JComboBox<String> employeeComboBox;
+    private JComboBox<Employee> employeeComboBox;
     private JButton okButton;
     private JButton cancelButton;
     private boolean confirmed;
@@ -36,89 +38,68 @@ public class EditUserDialog extends JDialog {
             // Lấy thông tin người dùng hiện tại
             User user = userDAO.getUserById(userId);
             if (user != null) {
+            	 System.out.println("Tìm thấy user: " + user.getUsername());
                 userDTO.setUsername(user.getUsername());
                 userDTO.setRole(user.getRole());
                 userDTO.setEmployeeId(user.getEmployeeId());
-                
-                // Cập nhật tiêu đề với tên người dùng
+                System.out.println("== EmployeeID cần chọn: " + userDTO);
+
                 setTitle("Sửa thông tin người dùng: " + user.getUsername());
             }
-            
+
             // Lấy danh sách nhân viên
             employees = employeeDAO.getAllEmployees();
+            System.out.println("=== Danh sách Employee ===");
+            for (Employee emp : employees) {
+                System.out.println("Emp: " + emp.getEmployeeName() + " | ID: " + emp.getId());
+            }
         } catch (SQLException e) {
-            JOptionPane.showMessageDialog(this, "Lỗi khi lấy thông tin: " + e.getMessage(),
-                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Lỗi khi lấy thông tin: " + e.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
         }
 
         initializeComponents();
         layoutComponents();
+        bindDataToForm();
         setupEventHandlers();
         pack();
         setLocationRelativeTo(parent);
     }
 
     private void initializeComponents() {
-        // Thiết lập font chữ
-        Font regularFont = new Font("SF Pro Text", Font.PLAIN, 13);
-        Font mediumFont = new Font("SF Pro Text", Font.BOLD, 13);
-        
-        // Username field
-        JLabel usernameLabel = new JLabel("Tên đăng nhập:");
-        usernameLabel.setFont(regularFont);
+        Font regularFont = new Font("Segoe UI", Font.PLAIN, 13);
+        Font mediumFont = new Font("Segoe UI", Font.BOLD, 13);
+
+        // Username
         usernameField = new JTextField(20);
-        usernameField.setText(userDTO.getUsername());
         usernameField.setFont(regularFont);
-        usernameField.setEnabled(false); // Không cho phép sửa username
-        
-        // Password field
-        JLabel passwordLabel = new JLabel("Mật khẩu mới:");
-        passwordLabel.setFont(regularFont);
+        usernameField.setEnabled(false);
+
+        // Password
         passwordField = new JPasswordField(20);
         passwordField.setFont(regularFont);
-        
-        // Role combobox
-        JLabel roleLabel = new JLabel("Vai trò:");
-        roleLabel.setFont(regularFont);
+
+        // Role
         String[] roles = {"ADMIN", "USER"};
         roleComboBox = new JComboBox<>(roles);
         roleComboBox.setFont(regularFont);
-        roleComboBox.setSelectedItem(userDTO.getRole());
-        
-        // Employee combobox
-        JLabel employeeLabel = new JLabel("Nhân viên:");
-        employeeLabel.setFont(regularFont);
-        String[] employeeNames = new String[employees.size()];
-        int selectedIndex = 0;
-        for (int i = 0; i < employees.size(); i++) {
-            Employee emp = employees.get(i);
-            employeeNames[i] = emp.getEmployeeName() + " - " + emp.getEmployeeName();
-            if (emp.getId().equals(userDTO.getEmployeeId())) {
-                selectedIndex = i;
-            }
-        }
-        employeeComboBox = new JComboBox<>(employeeNames);
+
+        // Employee ComboBox
+        employeeComboBox = new JComboBox<>(new DefaultComboBoxModel<>());
         employeeComboBox.setFont(regularFont);
-        employeeComboBox.setSelectedIndex(selectedIndex);
-        
+        for (Employee emp : employees) {
+            employeeComboBox.addItem(emp); // Add object directly
+        }
+
         // Buttons
         okButton = new JButton("Lưu");
         okButton.setFont(mediumFont);
-        okButton.setBackground(new Color(0, 122, 255)); // Màu xanh của Apple
+        okButton.setBackground(new Color(0, 122, 255));
         okButton.setForeground(Color.WHITE);
-        okButton.setFocusPainted(false);
-        okButton.setBorderPainted(false);
-        okButton.setOpaque(true);
-        okButton.setPreferredSize(new Dimension(80, 28));
-        
+
         cancelButton = new JButton("Hủy");
         cancelButton.setFont(mediumFont);
-        cancelButton.setBackground(new Color(242, 242, 247)); // Màu xám nhạt của Apple
+        cancelButton.setBackground(new Color(242, 242, 247));
         cancelButton.setForeground(new Color(0, 122, 255));
-        cancelButton.setFocusPainted(false);
-        cancelButton.setBorderPainted(false);
-        cancelButton.setOpaque(true);
-        cancelButton.setPreferredSize(new Dimension(80, 28));
     }
 
     private void layoutComponents() {
@@ -126,73 +107,101 @@ public class EditUserDialog extends JDialog {
         mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         mainPanel.setBackground(Color.WHITE);
 
-        // Form panel
         JPanel formPanel = new JPanel(new GridBagLayout());
         formPanel.setBackground(Color.WHITE);
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.anchor = GridBagConstraints.WEST;
         gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.anchor = GridBagConstraints.WEST;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Username
+        // Row 1: Username
+        gbc.gridx = 0; gbc.gridy = 0;
         formPanel.add(new JLabel("Tên đăng nhập:"), gbc);
         gbc.gridx = 1;
-        gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0;
         formPanel.add(usernameField, gbc);
 
-        // Password
-        gbc.gridx = 0;
-        gbc.gridy = 1;
-        gbc.weightx = 0;
+        // Row 2: Password
+        gbc.gridx = 0; gbc.gridy = 1;
         formPanel.add(new JLabel("Mật khẩu mới:"), gbc);
         gbc.gridx = 1;
-        gbc.weightx = 1.0;
         formPanel.add(passwordField, gbc);
 
-        // Role
-        gbc.gridx = 0;
-        gbc.gridy = 2;
-        gbc.weightx = 0;
+        // Row 3: Role
+        gbc.gridx = 0; gbc.gridy = 2;
         formPanel.add(new JLabel("Vai trò:"), gbc);
         gbc.gridx = 1;
-        gbc.weightx = 1.0;
         formPanel.add(roleComboBox, gbc);
 
-        // Employee
-        gbc.gridx = 0;
-        gbc.gridy = 3;
-        gbc.weightx = 0;
+        // Row 4: Employee
+        gbc.gridx = 0; gbc.gridy = 3;
         formPanel.add(new JLabel("Nhân viên:"), gbc);
         gbc.gridx = 1;
-        gbc.weightx = 1.0;
         formPanel.add(employeeComboBox, gbc);
 
-        mainPanel.add(formPanel, BorderLayout.CENTER);
-
-        // Button panel
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        // Buttons
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         buttonPanel.setBackground(Color.WHITE);
         buttonPanel.add(cancelButton);
         buttonPanel.add(okButton);
+
+        mainPanel.add(formPanel, BorderLayout.CENTER);
         mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
+    }
+
+    private void bindDataToForm() {
+        usernameField.setText(userDTO.getUsername());
+        passwordField.setText("");
+        roleComboBox.setSelectedItem(userDTO.getRole());
+
+        // ✅ So sánh UUID rồi chọn đúng index
+        if (userDTO.getEmployeeId() != null) {
+        	System.out.println(">>> Mapping: employeeId cần chọn: " + userDTO);
+
+        	for (int i = 0; i < employeeComboBox.getItemCount(); i++) {
+        	    Employee emp = employeeComboBox.getItemAt(i);
+        	    System.out.println("→ So với: " + emp.getEmployeeName() + " | ID: " + emp.getId());
+
+        	    if (emp.getId().equals(userDTO.getEmployeeId())) {
+        	        System.out.println("✅ Trùng với nhân viên ở index " + i + ": " + emp.getEmployeeName());
+        	    }
+        	}
+        }
     }
 
     private void setupEventHandlers() {
         okButton.addActionListener(e -> {
             if (validateInput()) {
                 userDTO.setUsername(usernameField.getText().trim());
-                String password = new String(passwordField.getPassword());
-                if (!password.isEmpty()) {
-                    userDTO.setPassword(password);
-                }
+                userDTO.setPassword(new String(passwordField.getPassword()));
                 userDTO.setRole((String) roleComboBox.getSelectedItem());
-                userDTO.setEmployeeId(employees.get(employeeComboBox.getSelectedIndex()).getId());
-                confirmed = true;
-                setVisible(false);
+
+                Employee selectedEmployee = (Employee) employeeComboBox.getSelectedItem();
+                if (selectedEmployee != null) {
+                    userDTO.setEmployeeId(selectedEmployee.getId());
+                }
+
+                try {
+                    UserService userService = new UserServiceImpl();
+
+                    User user = new User();
+                    user.setId(userDTO.getId());
+                    user.setUsername(userDTO.getUsername());
+                    user.setPassword(userDTO.getPassword());
+                    user.setRole(userDTO.getRole());
+                    user.setEmployeeId(userDTO.getEmployeeId());
+                    user.setUpdatedAt(new java.util.Date());
+
+                    userService.updateUser(user);
+
+                    JOptionPane.showMessageDialog(this, "Cập nhật người dùng thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+                    confirmed = true;
+                    setVisible(false);
+                } catch (SQLException ex) {
+                    JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật người dùng: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+                    ex.printStackTrace();
+                }
             }
         });
 
@@ -203,8 +212,7 @@ public class EditUserDialog extends JDialog {
     }
 
     private boolean validateInput() {
-        String username = usernameField.getText().trim();
-        if (username.isEmpty()) {
+        if (usernameField.getText().trim().isEmpty()) {
             JOptionPane.showMessageDialog(this, "Vui lòng nhập tên đăng nhập", "Lỗi", JOptionPane.ERROR_MESSAGE);
             return false;
         }
@@ -222,4 +230,4 @@ public class EditUserDialog extends JDialog {
     public EditUserDTO getUserDTO() {
         return userDTO;
     }
-} 
+}

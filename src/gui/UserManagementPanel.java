@@ -473,6 +473,7 @@ public class UserManagementPanel extends JPanel {
 				dialog.setVisible(true);
 				
 				if (dialog.isConfirmed()) {
+					userService.deleteUser(userId); // <
 					loadUserData();
 				}
 			} else {

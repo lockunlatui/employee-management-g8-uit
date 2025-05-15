@@ -9,23 +9,15 @@ import model.Department;
 import database.ConnectionManager;
 
 public class DepartmentDAO {
-    private Connection connection;
-
-    public DepartmentDAO() {
-        try {
-            this.connection = ConnectionManager.getConnection();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
 
     public List<Department> getAllDepartments() throws SQLException {
         List<Department> departments = new ArrayList<>();
         String sql = "SELECT * FROM departments";
-        
-        try (Statement statement = connection.createStatement();
+
+        try (Connection conn = ConnectionManager.getConnection();
+             Statement statement = conn.createStatement();
              ResultSet resultSet = statement.executeQuery(sql)) {
-            
+
             while (resultSet.next()) {
                 Department department = new Department();
                 byte[] idBytes = resultSet.getBytes("id");
@@ -36,16 +28,18 @@ public class DepartmentDAO {
                 departments.add(department);
             }
         }
-        
+
         return departments;
     }
 
     public Department getDepartmentById(UUID id) throws SQLException {
         String sql = "SELECT * FROM departments WHERE id = ?";
-        
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+        try (Connection conn = ConnectionManager.getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+
             statement.setBytes(1, uuidToBytes(id));
-            
+
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
                     Department department = new Department();
@@ -58,14 +52,16 @@ public class DepartmentDAO {
                 }
             }
         }
-        
+
         return null;
     }
 
     public void addDepartment(Department department) throws SQLException {
         String sql = "INSERT INTO departments (id, department_name) VALUES (?, ?)";
-        
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+        try (Connection conn = ConnectionManager.getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+
             statement.setBytes(1, uuidToBytes(department.getId()));
             statement.setString(2, department.getName());
             statement.executeUpdate();
@@ -74,8 +70,10 @@ public class DepartmentDAO {
 
     public void updateDepartment(Department department) throws SQLException {
         String sql = "UPDATE departments SET department_name = ? WHERE id = ?";
-        
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+        try (Connection conn = ConnectionManager.getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+
             statement.setString(1, department.getName());
             statement.setBytes(2, uuidToBytes(department.getId()));
             statement.executeUpdate();
@@ -84,8 +82,10 @@ public class DepartmentDAO {
 
     public void deleteDepartment(UUID id) throws SQLException {
         String sql = "DELETE FROM departments WHERE id = ?";
-        
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+        try (Connection conn = ConnectionManager.getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+
             statement.setBytes(1, uuidToBytes(id));
             statement.executeUpdate();
         }
@@ -93,20 +93,22 @@ public class DepartmentDAO {
 
     public boolean isDepartmentNameExists(String departmentName) throws SQLException {
         String sql = "SELECT COUNT(*) FROM departments WHERE department_name = ?";
-        
-        try (PreparedStatement statement = connection.prepareStatement(sql)) {
+
+        try (Connection conn = ConnectionManager.getConnection();
+             PreparedStatement statement = conn.prepareStatement(sql)) {
+
             statement.setString(1, departmentName);
-            
+
             try (ResultSet resultSet = statement.executeQuery()) {
                 if (resultSet.next()) {
                     return resultSet.getInt(1) > 0;
                 }
             }
         }
-        
+
         return false;
     }
-    
+
     public boolean isDepartmentCodeExists(String departmentCode) throws SQLException {
         return false;
     }
@@ -139,4 +141,4 @@ public class DepartmentDAO {
 
         return new UUID(msb, lsb);
     }
-} 
+}

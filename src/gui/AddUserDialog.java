@@ -1,5 +1,6 @@
 package gui;
-
+import service.UserServiceImpl; 
+import service.UserService; 
 import javax.swing.*;
 import java.awt.*;
 import java.sql.SQLException;
@@ -10,6 +11,7 @@ import dao.EmployeeDAO;
 import dao.UserDAO;
 import dto.UserDTO;
 import model.Employee;
+import model.User;
 
 public class AddUserDialog extends JDialog {
     private JTextField usernameField;
@@ -161,20 +163,42 @@ public class AddUserDialog extends JDialog {
     }
 
     private void setupEventHandlers() {
-        okButton.addActionListener(e -> {
-            if (validateInput()) {
-                userDTO.setUsername(usernameField.getText().trim());
-                userDTO.setPassword(new String(passwordField.getPassword()));
-                userDTO.setRole((String) roleComboBox.getSelectedItem());
-                userDTO.setEmployeeId(employees.get(employeeComboBox.getSelectedIndex()).getId());
-                confirmed = true;
-                setVisible(false);
-            }
-        });
+    	okButton.addActionListener(e -> {
+    	    if (validateInput()) {
+    	        userDTO.setUsername(usernameField.getText().trim());
+    	        userDTO.setPassword(new String(passwordField.getPassword()));
+    	        userDTO.setRole((String) roleComboBox.getSelectedItem());
+    	        userDTO.setEmployeeId(employees.get(employeeComboBox.getSelectedIndex()).getId());
+
+    	        try {
+    	            UserService userService = new UserServiceImpl();
+
+    	            // Convert DTO -> Entity
+    	            User user = new User();
+    	            user.setId(userDTO.getId());
+    	            user.setUsername(userDTO.getUsername());
+    	            user.setPassword(userDTO.getPassword()); // nên hash nếu cần
+    	            user.setRole(userDTO.getRole());
+    	            user.setEmployeeId(userDTO.getEmployeeId());
+    	            user.setCreatedAt(new java.util.Date());
+    	            user.setUpdatedAt(new java.util.Date());
+
+    	            userService.addUser(user);
+
+    	            JOptionPane.showMessageDialog(this, "Thêm người dùng thành công!", "Thông báo", JOptionPane.INFORMATION_MESSAGE);
+    	            confirmed = true;
+    	            setVisible(false);
+    	        } catch (SQLException ex) {
+    	            JOptionPane.showMessageDialog(this, "Lỗi khi thêm người dùng: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+    	            ex.printStackTrace();
+    	        }
+    	    }
+    	});
+
 
         cancelButton.addActionListener(e -> {
             confirmed = false;
-            setVisible(false);
+            setVisible(false); // Đóng cửa sổ khi người dùng hủy
         });
     }
 

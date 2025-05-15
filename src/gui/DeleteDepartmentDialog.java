@@ -8,6 +8,7 @@ import java.sql.SQLException;
 import java.util.UUID;
 
 import dao.DepartmentDAO;
+import dao.EmployeeDAO;
 import model.Department;
 
 @SuppressWarnings("serial")
@@ -17,6 +18,7 @@ public class DeleteDepartmentDialog extends JDialog {
     private JButton cancelButton;
     private boolean confirmed;
     private DepartmentDAO departmentDAO;
+    private EmployeeDAO employeeDAO;
     private UUID departmentId;
     private String departmentName;
     
@@ -32,9 +34,19 @@ public class DeleteDepartmentDialog extends JDialog {
         super(parent, "Xóa phòng ban", true);
         this.departmentId = departmentId;
         departmentDAO = new DepartmentDAO();
-
+        employeeDAO = new EmployeeDAO();
+   
         try {
             Department department = departmentDAO.getDepartmentById(departmentId);
+            
+            if (employeeDAO.countByDepartment(departmentId) > 0) {
+                JOptionPane.showMessageDialog(this,
+                    "Không thể xoá vì còn nhân viên thuộc phòng ban này.",
+                    "Lỗi", JOptionPane.ERROR_MESSAGE);
+                dispose();
+                return;
+            }
+
             if (department != null) {
                 this.departmentName = department.getName();
                 
